@@ -32,4 +32,4 @@ Multi-Robot Physics-Network Co-Simulator implementing high-fidelity simulation u
 
 ---
 
-*For more information, see my [Research](/research) page or [Publications](/publications) page.*
+*For more information, see my [Research](/research) page.*

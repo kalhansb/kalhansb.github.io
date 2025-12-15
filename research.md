@@ -69,6 +69,43 @@ Bridging the gap between theoretical algorithms and practical deployment through
 
 ---
 
+## Publications
+
+### Book Chapters
+
+**Cooperative Perception in Outdoor Robotics for a Sustainable Environment**  
+Book chapter in *Recent Advances in Robotic Perception for Forestry*  
+*Forthcoming*
+
+---
+
+### Journal Articles
+
+**Cooperative Perception for Multi-Robot Systems in Natural Outdoor Applications — A Survey**  
+*Journal of Intelligent & Robotic Systems*  
+*Under Review*
+
+---
+
+### Conference Papers
+
+**OHMS-NetSim: Enabling Obstacle-Aware Network-Physics Co-Simulation for Outdoor Multi-Robot Applications**  
+*UK Workshop on Computational Intelligence (UKCI)*, 2025  
+*Forthcoming*
+
+**Solar Photovoltaic Energy Forecasting Using Improved Ensemble Method For Micro-grid Energy Management**  
+*IEEE International Conference on Intelligent Systems for Science and Society (iSSSC)*, 2022  
+
+**Non-Intrusive Load Monitoring Using Denoising Autoencoder Neural Networks**  
+*IEEE Region 10 Humanitarian Technology Conference (R10-HTC)*, 2022  
+
+**Exploring Embodied Resources in Gaze in Human-Robot Collaborative Environments**  
+*Embodied Intelligence Conference*, 2022  
+
+[Google Scholar Profile](https://scholar.google.com/citations?hl=en&user=6-OKLyIAAAAJ&view_op=list_works&sortby=pubdate)
+
+---
+
 ## Technical Skills
 
 **Core Robotics:** ROS 2, Nav2, Multi-Robot Communication, Active Perception, 3D Mapping
@@ -91,3 +128,4 @@ Contributed to research on energy management systems and multi-agent control str
 
 ### Research Assistant | University of Moratuwa | Jul 2018 - Dec 2020
 Worked on various projects in energy systems and machine learning applications.
+
