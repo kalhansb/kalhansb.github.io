@@ -9,11 +9,8 @@ I am a PhD Researcher in the Department of Computer Science at **Nottingham Tren
 
 ## Research Interests
 
-- **Multi-Robot Systems**: Developing cooperative algorithms for robotic teams
-- **Active Perception**: Dynamic sensor management and information gathering
-- **Outdoor Robotics**: Robotics applications in natural and sustainable environments
-- **ROS 2 & Gazebo**: High-fidelity simulation and real-world deployment
-- **Network-Aware Coordination**: Communication-constrained multi-agent systems
+- **Active Cooperative Perception**: Designing active perception strategies for multi-robot teams — deciding *what*, *when*, and *where* to sense to maximise information gain and task performance, especially in outdoor and dynamic environments.
+- **Network-Aware Coordination**: Developing coordination methods that are aware of and adapt to communication constraints and degradation; includes simulation of obstacle-dependent communication and validation in ROS 2/Gazebo.
 
 ## Current Position
 
@@ -24,11 +21,12 @@ Investigating active perception strategies to improve the efficiency of multi-ro
 
 ## Featured Projects
 
-### [Jetbot VLM Navigator](https://github.com/kalhansb/jetbot_vlm_navigator)
-A VLM-driven navigation system for the NVIDIA Jetbot, utilizing Vision-Language Models to interpret RGB camera data for semantic scene understanding and decision-making.
-
 ### [OHMS-NetSim](https://github.com/RAISE-NTU/ohms_netsim)
 Multi-Robot Physics-Network Co-Simulator implementing high-fidelity simulation using ROS 2 Humble and Gazebo Fortress, with custom C++ plugins to emulate realistic communication degradation.
+
+
+### [Jetbot VLM Navigator](https://github.com/kalhansb/jetbot_vlm_navigator)
+A VLM-driven navigation system for the NVIDIA Jetbot, utilizing Vision-Language Models to interpret RGB camera data for semantic scene understanding and decision-making.
 
 ---
 
