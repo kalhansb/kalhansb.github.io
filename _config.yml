@@ -1,18 +1,48 @@
 title: Kalhan Boralessa
 description: PhD Researcher in Cooperative Perception & Multi-Robot Systems
+url: "https://kalhansb.github.io"
 
-# Social links
-linkedin_username: kalhansb
-github_username: kalhansb
-google_scholar: 6-OKLyIAAAAJ
+# Owner/Author Information
+author:
+  name: "Kalhan Boralessa"
+  bio: "PhD Researcher in Cooperative Perception & Multi-Robot Systems"
+  location: "Nottingham, UK"
+  links:
+    - label: "GitHub"
+      icon: "fab fa-fw fa-github"
+      url: "https://github.com/kalhansb"
+    - label: "LinkedIn"
+      icon: "fab fa-fw fa-linkedin"
+      url: "https://www.linkedin.com/in/kalhansb/"
+    - label: "Google Scholar"
+      icon: "fas fa-fw fa-graduation-cap"
+      url: "https://scholar.google.com/citations?hl=en&user=6-OKLyIAAAAJ&view_op=list_works&sortby=pubdate"
 
 # Build settings
-theme: minima
+remote_theme: mmistakes/minimal-mistakes
+minimal_mistakes_skin: "air" # Clean, academic theme
 
-# Additional settings
-show_excerpts: true
-minima:
-  social_links:
-    - { platform: github, user_url: "https://github.com/kalhansb" }
-    - { platform: linkedin, user_url: "https://www.linkedin.com/in/kalhansb/" }
-    - { platform: google_scholar, user_url: "https://scholar.google.com/citations?hl=en&user=6-OKLyIAAAAJ&view_op=list_works&sortby=pubdate" }
+# Plugins
+plugins:
+  - jekyll-include-cache
+
+# Defaults
+defaults:
+  # _posts
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: single
+      author_profile: true
+      read_time: true
+      comments: false
+      share: true
+      related: true
+  # _pages
+  - scope:
+      path: ""
+      type: pages
+    values:
+      layout: single
+      author_profile: true

@@ -1,5 +1,6 @@
 ---
-layout: page
+layout: single
+author_profile: true
 title: Research
 permalink: /research/
 ---
@@ -104,7 +105,9 @@ Book chapter in *Recent Advances in Robotic Perception for Forestry*
 
 **Core Robotics:** ROS 2, Nav2, Multi-Robot Communication, Active Perception, 3D Mapping
 
-**Simulation & AI:** Gazebo, Unity 3D for Digital Twins, Machine Learning, Reinforcement Learning, Deep Learning
+**AI:** Machine Learning, Reinforcement Learning, Deep Learning
+
+**Simulation:** Gazebo, Unity 3D for Digital Twins
 
 **Hardware:** Jetbot, Realsense RGB-D Cameras
 
