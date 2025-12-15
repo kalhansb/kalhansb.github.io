@@ -21,21 +21,6 @@ My doctoral research investigates active perception strategies to improve the ef
 
 ## Active Projects
 
-### Jetbot VLM Navigator
-**Repository:** [github.com/kalhansb/jetbot_vlm_navigator](https://github.com/kalhansb/jetbot_vlm_navigator)
-
-A Vision-Language Model (VLM)-driven navigation system for the NVIDIA Jetbot platform. This project explores semantic scene understanding using multimodal AI models.
-
-**Key Contributions:**
-- VLM integration for semantic navigation
-- RGB camera-based decision-making
-- Robust control interface with safety mechanisms
-- Real-time processing on edge devices (Jetson Nano)
-
-**Technologies:** Python, ROS 2, Vision-Language Models, NVIDIA Jetson
-
----
-
 ### OHMS-NetSim: Multi-Robot Physics-Network Co-Simulator
 **Repository:** [github.com/RAISE-NTU/ohms_netsim](https://github.com/RAISE-NTU/ohms_netsim)
 
@@ -51,21 +36,32 @@ A high-fidelity simulation framework for multi-robot teams that co-simulates bot
 
 **Publication:** *OHMS-NetSim: Enabling Obstacle-Aware Network-Physics Co-Simulation for Outdoor Multi-Robot Applications*, UKCI 2025 (Forthcoming)
 
+### Jetbot VLM Navigator
+**Repository:** [github.com/kalhansb/jetbot_vlm_navigator](https://github.com/kalhansb/jetbot_vlm_navigator)
+
+A Vision-Language Model (VLM)-driven navigation system for the NVIDIA Jetbot platform. This project explores semantic scene understanding using multimodal AI models.
+
+**Key Contributions:**
+- VLM integration for semantic navigation
+- RGB camera-based decision-making
+- Robust control interface with safety mechanisms
+- Real-time processing on edge devices (Jetson Nano)
+
+**Technologies:** Python, ROS 2, Vision-Language Models, NVIDIA Jetson
+
 ---
 
 ## Research Themes
 
-### Active Perception
-Developing algorithms that enable robots to actively decide how to allocate sensing resources to maximize information gain and task performance.
+### Active Cooperative Perception
+Developing algorithms that enable multi-robot teams to actively decide *what*, *when*, and *where* to sense so as to maximise information gain and improve task performance — particularly for outdoor and dynamic environments. This includes active sensor management, decision-theoretic information measures, and simulation-to-reality validation.
 
-### Multi-Robot Coordination
-Investigating cooperative strategies for robotic teams operating in communication-constrained and dynamic environments.
+### Network-Aware Coordination
+Investigating coordination methods that adapt to communication constraints and realistic degradation (e.g., obstacle-dependent loss). This covers network-aware planning, communication-efficient information sharing, and co-simulation of physics and networks to evaluate algorithms under realistic conditions.
 
-### Sustainable Robotics
-Applying robotic perception and coordination techniques to environmental monitoring, precision agriculture, and sustainable forestry applications.
-
-### Simulation to Reality
-Bridging the gap between theoretical algorithms and practical deployment through high-fidelity simulation frameworks.
+### Additional Themes
+- Sustainable Robotics: Applications in environmental monitoring, precision agriculture, and forestry  
+- Simulation to Reality: High-fidelity simulation frameworks (ROS 2, Gazebo) and hardware validation
 
 ---
 
@@ -77,7 +73,6 @@ Bridging the gap between theoretical algorithms and practical deployment through
 Book chapter in *Recent Advances in Robotic Perception for Forestry*  
 *Forthcoming*
 
----
 
 ### Journal Articles
 
@@ -85,7 +80,6 @@ Book chapter in *Recent Advances in Robotic Perception for Forestry*
 *Journal of Intelligent & Robotic Systems*  
 *Under Review*
 
----
 
 ### Conference Papers
 

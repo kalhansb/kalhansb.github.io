@@ -9,8 +9,8 @@ I am a PhD Researcher in the Department of Computer Science at **Nottingham Tren
 
 ## Research Interests
 
-- **Active Cooperative Perception**: Designing active perception strategies for multi-robot teams — deciding *what*, *when*, and *where* to sense to maximise information gain and task performance, especially in outdoor and dynamic environments.
-- **Network-Aware Coordination**: Developing coordination methods that are aware of and adapt to communication constraints and degradation; includes simulation of obstacle-dependent communication and validation in ROS 2/Gazebo.
+- **Active Cooperative Perception**: Designing active perception strategies for multi-robot teams — deciding *what*, *when*, and *where* to sense to maximise information gain and task performance, especially in outdoor and dynamic environments. [Learn more](/research#active-cooperative-perception)
+- **Network-Aware Coordination**: Developing coordination methods that are aware of and adapt to communication constraints and degradation; includes simulation of obstacle-dependent communication and validation in ROS 2/Gazebo. [Learn more](/research#network-aware-coordination)
 
 ## Current Position
 
