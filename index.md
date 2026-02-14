@@ -25,10 +25,6 @@ Investigating active perception strategies to improve the efficiency of multi-ro
 ### [OHMS-NetSim](https://github.com/RAISE-NTU/ohms_netsim)
 Multi-Robot Physics-Network Co-Simulator implementing high-fidelity simulation using ROS 2 Humble and Gazebo Fortress, with custom C++ plugins to emulate realistic communication degradation.
 
-
-### [Jetbot VLM Navigator](https://github.com/kalhansb/jetbot_vlm_navigator)
-A VLM-driven navigation system for the NVIDIA Jetbot, utilizing Vision-Language Models to interpret RGB camera data for semantic scene understanding and decision-making.
-
 ---
 
 *For more information, see my [Research](/research) page.*

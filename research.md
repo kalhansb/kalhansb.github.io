@@ -36,20 +36,6 @@ A high-fidelity simulation framework for multi-robot teams that co-simulates bot
 **Technologies:** C++, Python, ROS 2, Gazebo, Network Simulation
 
 **Publication:** *OHMS-NetSim: Enabling Obstacle-Aware Network-Physics Co-Simulation for Outdoor Multi-Robot Applications*, UKCI 2025 (Forthcoming)
-
-### Jetbot VLM Navigator
-**Repository:** [github.com/kalhansb/jetbot_vlm_navigator](https://github.com/kalhansb/jetbot_vlm_navigator)
-
-A Vision-Language Model (VLM)-driven navigation system for the NVIDIA Jetbot platform. This project explores semantic scene understanding using multimodal AI models.
-
-**Key Contributions:**
-- VLM integration for semantic navigation
-- RGB camera-based decision-making
-- Robust control interface with safety mechanisms
-- Real-time processing on edge devices (Jetson Nano)
-
-**Technologies:** Python, ROS 2, Vision-Language Models, NVIDIA Jetson
-
 ---
 
 ## Research Themes
