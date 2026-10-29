@@ -1,0 +1,1164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Short animated walkthrough of Reconnection Planning v1: how a robot picks goals in four steps, how robots swap maps, and what the off, pursuit, rendezvous and hybrid arms add.">
+<title>Reconnection Planning Basics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1F4EF; --surface:#FFFFFF; --surface-2:#F6F8F4; --ink:#1B231F; --muted:#56635B; --line:#D3DBD4;
+  --accent:#2D6A4F; --link:#2C9A5A; --tint:rgba(45,106,79,0.11); --tree:rgba(58,84,66,0.30); --no:#7B8780;
+  --r0:#2A5DB0; --r1:#B8326A; --r2:#0B7F79;
+  --fog:rgba(52,66,57,0.30); --unseen:#A4ADB8; --cov:rgba(44,154,90,0.20); --cov-edge:rgba(45,106,79,0.55);
+  --fr:#7445B8; --fr-soft:rgba(116,69,184,0.20); --bad:#B5452B; --good:#2C8A52;
+  --a-explore:#B7CFBE; --a-trip:#E0A22A; --a-hold:#A9B2AC; --a-chase:#D2532A; --a-follow:#E8845D; --a-wait:#8A90A8; --a-home:#58616A;
+  --on-bg:#E3EEE6; --on-ink:#1F5A3E;
+  --display:"Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body:"Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1411; --surface:#161D19; --surface-2:#1B241F; --ink:#E1E8E3; --muted:#97A59C; --line:#2C3730;
+    --accent:#86CBA4; --link:#5CCB8B; --tint:rgba(134,203,164,0.12); --tree:rgba(170,204,182,0.24); --no:#8E9B93;
+    --r0:#7FA9F5; --r1:#F07CA9; --r2:#45C8C0;
+    --fog:rgba(0,0,0,0.55); --unseen:#0C100E; --cov:rgba(92,203,139,0.16); --cov-edge:rgba(134,203,164,0.45);
+    --fr:#B795F0; --fr-soft:rgba(183,149,240,0.24); --bad:#F08A6E; --good:#6FD39B;
+    --a-explore:#3E5B49; --a-trip:#D8A13A; --a-hold:#56605A; --a-chase:#EE7B50; --a-follow:#F3A27F; --a-wait:#7D84A2; --a-home:#A6AFB8;
+    --on-bg:#203A2B; --on-ink:#9FDDB9;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1411; --surface:#161D19; --surface-2:#1B241F; --ink:#E1E8E3; --muted:#97A59C; --line:#2C3730;
+  --accent:#86CBA4; --link:#5CCB8B; --tint:rgba(134,203,164,0.12); --tree:rgba(170,204,182,0.24); --no:#8E9B93;
+  --r0:#7FA9F5; --r1:#F07CA9; --r2:#45C8C0;
+  --fog:rgba(0,0,0,0.55); --unseen:#0C100E; --cov:rgba(92,203,139,0.16); --cov-edge:rgba(134,203,164,0.45);
+  --fr:#B795F0; --fr-soft:rgba(183,149,240,0.24); --bad:#F08A6E; --good:#6FD39B;
+  --a-explore:#3E5B49; --a-trip:#D8A13A; --a-hold:#56605A; --a-chase:#EE7B50; --a-follow:#F3A27F; --a-wait:#7D84A2; --a-home:#A6AFB8;
+  --on-bg:#203A2B; --on-ink:#9FDDB9;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;display:flex;flex-direction:column;gap:44px}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.1}
+h1{font-size:clamp(30px,4.4vw,46px);font-weight:700;letter-spacing:-0.01em}
+h2{font-size:28px;font-weight:600}
+h3{font-size:22px;font-weight:600}
+h4{font-size:18px;font-weight:600}
+p{margin:0}
+ul,ol{margin:0}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)}
+.lede{max-width:68ch;font-size:18px}
+header.top{display:flex;flex-direction:column;gap:14px}
+.toc{display:flex;flex-wrap:wrap;gap:8px}
+.toc a{font-family:var(--display);font-size:16px;font-weight:600;color:var(--ink);text-decoration:none;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:5px 12px}
+.toc a b{color:var(--accent);margin-right:6px}
+.toc a:hover{border-color:var(--accent)}
+.toc a:focus-visible,.btn:focus-visible,.log button:focus-visible,select:focus-visible,input:focus-visible,.dots button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.part{display:flex;flex-direction:column;gap:22px}
+.part-head{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;align-items:baseline;border-top:2px solid var(--ink);padding-top:14px}
+.part-head .letter{font-family:var(--display);font-weight:700;font-size:44px;line-height:0.9;color:var(--accent);grid-row:span 2}
+.part-head p{color:var(--muted);max-width:72ch}
+
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.stage-head{display:flex;flex-direction:column;gap:6px}
+.stage-head p{max-width:76ch}
+.tag{font-family:var(--mono);font-size:11px;letter-spacing:0.05em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px;align-self:flex-start}
+.stage-body{display:grid;grid-template-columns:1fr;gap:18px;align-items:start}
+@media (min-width:940px){.stage-body{grid-template-columns:minmax(0,1.45fr) minmax(290px,1fr)}}
+.viz{display:flex;flex-direction:column;gap:10px;min-width:0}
+canvas.cv{display:block;width:100%;max-width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:6px}
+canvas.strip{display:block;width:100%;height:auto;border-radius:4px}
+.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.btn{font-family:var(--display);font-size:16px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:5px 14px;cursor:pointer;min-width:74px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn:disabled{opacity:0.45;cursor:default}
+input[type=range]{flex:1 1 200px;min-width:0;accent-color:var(--accent)}
+.clock{font-family:var(--mono);font-size:14px;min-width:7ch;font-variant-numeric:tabular-nums;color:var(--ink)}
+select{font-family:var(--mono);font-size:14px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+.ctl label{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dots{display:flex;flex-wrap:wrap;gap:4px;list-style:none;padding:0}
+.dots button{font-family:var(--mono);font-size:12px;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;padding:0}
+.dots button.on{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.side .k{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:0.04em;text-transform:uppercase}
+.side p{font-size:15.5px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:2px;display:inline-block;border:1px solid var(--line)}
+.sw-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.sw-line{width:18px;height:0;border-top:2px solid var(--link);display:inline-block}
+.sw-dash{width:18px;height:0;border-top:2px dashed var(--muted);display:inline-block}
+
+.tbl-wrap{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:6px}
+table.cands{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+table.cands th{position:sticky;top:0;background:var(--surface-2);font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:0.03em;text-transform:uppercase;color:var(--muted);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)}
+table.cands td{padding:4px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+table.cands th:first-child,table.cands td:first-child{text-align:left}
+table.cands td.v-goal{color:var(--good);font-weight:600}
+table.cands td.v-skip{color:var(--bad)}
+table.cands tr.cur td{background:var(--fr-soft)}
+
+.bars{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.statebox{display:flex;flex-direction:column;gap:6px;font-size:14.5px;border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:var(--surface-2)}
+.statebox .row{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.who{font-family:var(--mono);font-weight:500;font-size:13px}
+.chip{font-family:var(--mono);font-size:11px;letter-spacing:0.03em;padding:1px 7px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.log{list-style:none;padding:0;margin:0;max-height:230px;overflow:auto;border-top:1px solid var(--line);font-size:14px}
+.log li{border-bottom:1px solid var(--line)}
+.log button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:52px 1fr;gap:8px;width:100%;padding:5px 4px;cursor:pointer;color:var(--muted)}
+.log li.past button{color:var(--ink)}
+.log li.now button{background:var(--tint)}
+.log .lt{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;padding-top:2px}
+.meter{display:flex;flex-direction:column;gap:4px}
+.meter .track{position:relative;height:14px;background:var(--surface-2);border:1px solid var(--line);border-radius:3px}
+.meter .fill{position:absolute;left:0;top:0;bottom:0;background:var(--cov-edge)}
+.meter .mark{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+.meter .lab{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--muted)}
+@media (min-width:560px){.boards{grid-template-columns:1fr 1fr}}
+.radio-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.radio-row figure{margin:0;display:flex;flex-direction:column;gap:4px}
+.radio-row figcaption{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.xbar{display:grid;grid-template-columns:72px 1fr 62px;gap:8px;align-items:center;font-size:13px}
+.xbar .track{height:10px;background:var(--surface-2);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.xbar .fill{height:100%}
+.xbar .num{font-family:var(--mono);font-size:12px;text-align:right}
+.ok{color:var(--good);font-weight:600} .nok{color:var(--bad)}
+
+.lad-wrap{overflow-x:auto}
+table.ladder{border-collapse:separate;border-spacing:0 4px;width:100%;min-width:560px}
+table.ladder th{font-family:var(--mono);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);text-align:center;padding:2px 6px}
+table.ladder th:nth-child(-n+2){text-align:left}
+table.ladder td{padding:8px 10px;background:var(--surface-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:14.5px}
+table.ladder td:first-child{border-left:1px solid var(--line);border-radius:6px 0 0 6px;font-family:var(--mono);color:var(--muted);width:24px}
+table.ladder td:last-child{border-right:1px solid var(--line);border-radius:0 6px 6px 0}
+table.ladder td.act{font-family:var(--display);font-weight:600;font-size:17px;white-space:nowrap}
+table.ladder td.cond{color:var(--muted)}
+table.ladder td.arm{text-align:center;width:84px;font-family:var(--mono);font-size:12px}
+td.arm .na{color:var(--line)}
+td.arm .holds{color:var(--muted)}
+td.arm .pick{display:inline-block;background:var(--accent);color:var(--surface);border-radius:999px;padding:2px 9px;font-weight:500}
+
+/* arms */
+.switch-row{display:grid;grid-template-columns:1fr;gap:16px;align-items:start}
+@media (min-width:900px){.switch-row{grid-template-columns:minmax(300px,380px) 1fr}}
+table.switch{border-collapse:separate;border-spacing:6px;font-family:var(--display);font-size:17px;margin:-6px}
+table.switch th{font-weight:500;color:var(--muted);font-size:14px;text-align:left;padding:2px 6px}
+table.switch td{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-weight:600}
+table.switch td.on{background:var(--on-bg);color:var(--on-ink);border-color:transparent}
+table.switch td.off{color:var(--no);font-weight:500}
+.off-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+
+/* measured */
+.measured{border:1px dashed var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.note{font-size:14px;color:var(--muted);max-width:80ch}
+a{color:var(--accent)}
+.how{padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.how li::marker{font-family:var(--mono);color:var(--accent);font-weight:500}
+.res-grid{display:grid;grid-template-columns:1fr;gap:20px}
+@media (min-width:860px){.res-grid{grid-template-columns:repeat(3,1fr)}}
+.res{display:flex;flex-direction:column;gap:8px;border-top:2px solid var(--line);padding-top:10px}
+.res p{font-size:15.5px}
+.res .fig{margin-top:auto;font-family:var(--display);font-weight:600;font-size:17px}
+table.ladder th:nth-child(3){text-align:left}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Reconnection Planning v1 · short version</p>
+  <h1>How the robots explore, and how they get back in touch</h1>
+  <p class="lede">A team of robots maps a forest. Each robot picks its own next goal, and robots swap maps whenever their radios reach each other. The four arms differ only in what a robot does to get back in touch. The scenes below are small toys. Measured results are at the end.</p>
+  <nav class="toc" aria-label="Sections">
+    <a href="#explore"><b>A</b>Exploring</a>
+    <a href="#shared"><b>B</b>Talking</a>
+    <a href="#arms"><b>C</b>The four arms</a>
+    <a href="#measured"><b>D</b>Results</a>
+  </nav>
+  <p class="note">This is the short version. Every rule and threshold is in the <a href="../">full walkthrough</a>.</p>
+</header>
+
+<!-- ================= PART A ================= -->
+<section class="part" id="explore">
+  <div class="part-head"><span class="letter">A</span><h2>How one robot explores</h2>
+    <p>Each robot keeps a map with three kinds of ground: not seen yet, free, and blocked (a trunk plus a 1.5 m safety ring). The map holds what the robot has seen itself and whatever its teammates have sent it. This part works the same way in all four arms.</p></div>
+
+  <article class="stage" id="a1">
+    <div class="stage-head"><span class="tag">Toy map</span><h3>Picking the next goal in four steps</h3>
+      <p>A frozen moment from the toy run below. Press Play, or pick a step.</p></div>
+    <div class="stage-body">
+      <div class="viz">
+        <canvas class="cv" id="a1c" style="aspect-ratio:3/2" role="img" aria-label="Toy map showing how a robot picks its next goal"></canvas>
+        <div class="ctl">
+          <button class="btn" id="a1back" type="button">Back</button>
+          <button class="btn primary" id="a1play" type="button">Play</button>
+          <button class="btn" id="a1next" type="button">Next</button>
+          <ol class="dots" id="a1dots" aria-label="Steps"></ol>
+        </div>
+        <div class="legend">
+          <span><i class="sw" style="background:var(--unseen)"></i>Not seen yet</span>
+          <span><i class="sw" style="background:var(--surface)"></i>Free</span>
+          <span><i class="sw" style="background:var(--tree)"></i>Trunk + safety ring</span>
+          <span><i class="sw" style="background:var(--fr)"></i>Edge / spot</span>
+          <span><i class="sw-dot" style="background:var(--r0)"></i>R1</span>
+          <span><i class="sw-dot" style="background:var(--r1)"></i>R2</span>
+        </div>
+      </div>
+      <aside class="side">
+        <p class="k" id="a1k">Step 1 of 4</p>
+        <h4 id="a1h">Find the edges</h4>
+        <p id="a1p"></p>
+        <div class="tbl-wrap" id="a1tw"><table class="cands" id="a1t"></table></div>
+      </aside>
+    </div>
+  </article>
+
+  <article class="stage" id="a2">
+    <div class="stage-head"><span class="tag">Toy map · runs live</span><h3>Then repeat until the map is done</h3>
+      <p>Two robots repeat those four steps on one shared map. In this scene they stay in radio contact the whole time. A robot is finished once 90% of the area is known, and then it drives back to its start.</p></div>
+    <div class="stage-body">
+      <div class="viz">
+        <canvas class="cv" id="a2c" style="aspect-ratio:3/2" role="img" aria-label="Two toy robots exploring a shared map"></canvas>
+        <div class="ctl">
+          <button class="btn primary" id="a2play" type="button">Play</button>
+          <button class="btn" id="a2reset" type="button">Restart</button>
+          <label for="a2speed">Speed <select id="a2speed"><option value="8">8×</option><option value="20" selected>20×</option><option value="50">50×</option></select></label>
+          <span class="clock" id="a2clock">0 s</span>
+        </div>
+        <div class="legend">
+          <span><i class="sw" style="background:var(--cov);border-color:var(--cov-edge)"></i>10 m square done</span>
+          <span><i class="sw" style="border:2px solid var(--r0)"></i>R1's current square</span>
+          <span><i class="sw" style="border:2px solid var(--r1)"></i>R2's current square</span>
+          <span>○ goal reached</span><span>× goal failed</span>
+        </div>
+      </div>
+      <aside class="side">
+        <div class="meter"><span class="k">Area known (shared map)</span>
+          <div class="track"><div class="fill" id="a2fill"></div><div class="mark" style="left:90%"></div></div>
+          <div class="lab"><span id="a2pct">0%</span><span>finish line 90%</span></div></div>
+        <div class="statebox" id="a2state"></div>
+        <p class="note">The outlined square is the one each robot is working on now: the first square on its tour from step 3.</p>
+      </aside>
+    </div>
+  </article>
+</section>
+
+<!-- ================= PART B ================= -->
+<section class="part" id="shared">
+  <div class="part-head"><span class="letter">B</span><h2>How robots talk to each other</h2>
+    <p>This is also the same in every arm. The arms only change when a robot stops exploring to go somewhere else.</p></div>
+
+  <article class="stage" id="b1">
+    <div class="stage-head"><span class="tag">Toy scene</span><h3>Hearing each other and swapping maps</h3>
+      <p>Every robot sends a short beacon once a second: where it is, where it is going, and which robots it can hear. Trunks block the radio. When two robots hear each other, they swap maps until each has everything the other had.</p></div>
+    <div class="stage-body">
+      <div class="viz">
+        <canvas class="cv" id="b1c" style="aspect-ratio:2/1" role="img" aria-label="Two robots sending beacons through trees"></canvas>
+        <div class="radio-row">
+          <figure><figcaption>R1's map: its own (blue) + from R2 (pink)</figcaption><canvas class="cv" id="b1m0" style="aspect-ratio:1/1"></canvas></figure>
+          <figure><figcaption>R2's map: its own (pink) + from R1 (blue)</figcaption><canvas class="cv" id="b1m1" style="aspect-ratio:1/1"></canvas></figure>
+        </div>
+        <div class="ctl">
+          <button class="btn primary" id="b1play" type="button">Play</button>
+          <input type="range" id="b1scrub" min="0" max="80" value="0" aria-label="Time">
+          <span class="clock" id="b1clock">0 s</span>
+        </div>
+      </div>
+      <aside class="side">
+        <div class="statebox" id="b1st"></div>
+        <div id="b1ex" class="bars"></div>
+        <ol class="log" id="b1log"></ol>
+      </aside>
+    </div>
+  </article>
+
+  <article class="stage" id="b2">
+    <div class="stage-head"><span class="tag">One list, four arms</span><h3>What a robot does next</h3>
+      <p>Each robot keeps running down this list and does the first row that applies. The arms differ only in which rows they have.</p></div>
+    <div class="lad-wrap"><table class="ladder">
+      <thead><tr><th>#</th><th>Activity</th><th>When it applies</th><th>off</th><th>pursuit</th><th>rendezvous</th><th>hybrid</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td class="act">Go to the meeting</td><td class="cond">It is time to leave for a booked meeting</td><td class="arm"><span class="na">–</span></td><td class="arm"><span class="na">–</span></td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td></tr>
+        <tr><td>2</td><td class="act">Chase</td><td class="cond">It is looking for a teammate it lost touch with</td><td class="arm"><span class="na">–</span></td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="na">–</span></td><td class="arm"><span class="pick">✓</span></td></tr>
+        <tr><td>3</td><td class="act">Explore</td><td class="cond">Less than 90% of the area is known</td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td></tr>
+        <tr><td>4</td><td class="act">Wait at meetings</td><td class="cond">Finished, but teammates are still exploring</td><td class="arm"><span class="na">–</span></td><td class="arm"><span class="na">–</span></td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td></tr>
+        <tr><td>5</td><td class="act">Go home</td><td class="cond">Finished. With meetings, only once the whole team has finished or after 2 missed meetings in a row</td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Map swapping is not on the list. It happens in every arm whenever two robots are in range, whatever they are doing.</p>
+  </article>
+</section>
+
+<!-- ================= PART C ================= -->
+<section class="part" id="arms">
+  <div class="part-head"><span class="letter">C</span><h2>The four arms: two switches</h2>
+    <p>Chase: go and find a teammate you have lost touch with. Meetings: agree times and places to meet, then keep them. Each arm is one combination of the two.</p></div>
+  <div class="switch-row">
+    <table class="switch" aria-label="Arm switches">
+      <thead><tr><th></th><th>Chase</th><th>Meetings</th></tr></thead>
+      <tbody>
+        <tr><th>off</th><td class="off">–</td><td class="off">–</td></tr>
+        <tr><th>pursuit</th><td class="on">on</td><td class="off">–</td></tr>
+        <tr><th>rendezvous</th><td class="off">–</td><td class="on">on</td></tr>
+        <tr><th>hybrid</th><td class="on">on</td><td class="on">on</td></tr>
+      </tbody>
+    </table>
+    <div class="off-card"><h3>off</h3><p>Explore, then drive home. Robots meet only by chance, and they still swap maps whenever they are in range. Parts A and B are all there is to off.</p></div>
+  </div>
+
+  <article class="stage" id="cp">
+    <div class="stage-head"><span class="tag">Toy scene</span><h3>pursuit: go and find a lost teammate, if it pays</h3>
+      <p>R1 loses touch with R2 and keeps exploring. At first, finding R2 isn't worth the trip. Later it is, and R1 goes looking.</p></div>
+    <div class="stage-body">
+      <div class="viz">
+        <canvas class="cv" id="cpc" style="aspect-ratio:1/1" role="img" aria-label="Pursuit toy scene"></canvas>
+        <canvas class="strip" id="cpt" role="img" aria-label="Activity timeline"></canvas>
+        <div class="ctl">
+          <button class="btn primary" id="cpplay" type="button">Play</button>
+          <input type="range" id="cpscrub" aria-label="Time">
+          <span class="clock" id="cpclock">0 s</span>
+        </div>
+        <div class="legend" id="cpleg"></div>
+      </div>
+      <aside class="side">
+        <span class="k">How it works</span>
+        <ol class="how">
+          <li>A teammate has been silent for 90 s.</li>
+          <li>Every 10 s the robot asks: would finding it finish the job sooner than carrying on alone? Usually the answer is no.</li>
+          <li>If yes, it drives to where the teammate should be by now, then to its last goal, then to where it was last heard.</li>
+          <li>Once it hears the teammate, it follows at 10 m until their maps are swapped, then explores again.</li>
+        </ol>
+        <div class="statebox" id="cpstate"></div>
+        <ol class="log" id="cplog"></ol>
+      </aside>
+    </div>
+  </article>
+
+  <article class="stage" id="cr">
+    <div class="stage-head"><span class="tag">Toy scene</span><h3>rendezvous: agree a time and place, then keep it</h3>
+      <p>Three robots set up meetings while they are still together at the start. The first meeting works. On the way to the second, R3 gets stuck and misses it.</p></div>
+    <div class="stage-body">
+      <div class="viz">
+        <canvas class="cv" id="crc" style="aspect-ratio:1/1" role="img" aria-label="Rendezvous toy scene"></canvas>
+        <canvas class="strip" id="crt" role="img" aria-label="Activity timeline"></canvas>
+        <div class="ctl">
+          <button class="btn primary" id="crplay" type="button">Play</button>
+          <input type="range" id="crscrub" aria-label="Time">
+          <span class="clock" id="crclock">0 s</span>
+        </div>
+        <div class="legend" id="crleg"></div>
+      </div>
+      <aside class="side">
+        <span class="k">How it works</span>
+        <ol class="how">
+          <li>At the start, while everyone is in contact, R1 picks a meeting square. Meetings repeat every 300 s.</li>
+          <li>Once the team is out of contact, each robot books the next meeting it can reach in time.</li>
+          <li>It stops exploring just in time to get there, and waits at its own spot beside the square.</li>
+          <li>When everyone has swapped maps, the meeting is over and R1 picks a new square. If the team hasn't all met 2 minutes after the meeting time, each robot gives up and explores again.</li>
+        </ol>
+        <div class="statebox" id="crstate"></div>
+        <ol class="log" id="crlog"></ol>
+      </aside>
+    </div>
+  </article>
+
+  <article class="stage" id="ch">
+    <div class="stage-head"><span class="tag">Toy scene</span><h3>hybrid: both, and the meeting comes first</h3>
+      <p>R1 may chase R2 between meetings. When it is time to leave for a meeting, R1 drops the chase.</p></div>
+    <div class="stage-body">
+      <div class="viz">
+        <canvas class="cv" id="chc" style="aspect-ratio:1/1" role="img" aria-label="Hybrid toy scene"></canvas>
+        <canvas class="strip" id="cht" role="img" aria-label="Activity timeline"></canvas>
+        <div class="ctl">
+          <button class="btn primary" id="chplay" type="button">Play</button>
+          <input type="range" id="chscrub" aria-label="Time">
+          <span class="clock" id="chclock">0 s</span>
+        </div>
+        <div class="legend" id="chleg"></div>
+      </div>
+      <aside class="side">
+        <span class="k">How it works</span>
+        <ol class="how">
+          <li>The robot books meetings as in rendezvous, and chases as in pursuit.</li>
+          <li>A chase may start only if the robot's next departure for a meeting is more than 2 minutes away.</li>
+          <li>When it is time to leave, the meeting wins and the chase is dropped.</li>
+          <li>Chasing away from the meeting square makes the trip back longer, so the robot has to leave earlier.</li>
+        </ol>
+        <div class="statebox" id="chstate"></div>
+        <ol class="log" id="chlog"></ol>
+      </aside>
+    </div>
+  </article>
+</section>
+
+<!-- ================= PART D ================= -->
+<section class="part" id="measured">
+  <div class="part-head"><span class="letter">D</span><h2>What the runs showed</h2>
+    <p>Measured in the full simulator, not in the toys: 360 runs, 30 for each arm with 2, 3 and 4 robots. Each arm is compared with off.</p></div>
+  <div class="measured">
+    <div class="res-grid">
+      <div class="res"><h3>pursuit</h3>
+        <p>Robots hardly ever chased: less than one chase per robot per run, because the check usually said a chase wasn't worth it.</p>
+        <p>Time in contact: about the same as off.</p>
+        <p class="fig">Finish: 2–4% slower than off, not a clear difference.</p></div>
+      <div class="res"><h3>rendezvous</h3>
+        <p>Robots stayed in contact about 1.6 times as long, and the time spent in long gaps (2 minutes or more) was cut in half.</p>
+        <p>The cost was the trips to meetings: 20% of exploring time with 2 robots, 31% with 3 and 41% with 4.</p>
+        <p class="fig">Finish: 7% slower with 2 robots (not a clear difference), about 20% slower with 3 or 4.</p></div>
+      <div class="res"><h3>hybrid</h3>
+        <p>Much the same as rendezvous on every measure, including contact. None of the differences between the two was clear.</p>
+        <p class="fig">Finish: 15% slower with 2 robots (not a clear difference), 18–24% slower with 3 or 4.</p></div>
+    </div>
+    <p class="note">A difference counts as clear when it holds up after correcting for the many comparisons made at once.</p>
+  </div>
+</section>
+</div>
+
+<script>
+(function(){
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const DBG = [];
+const MONO = getComputedStyle(document.documentElement).getPropertyValue('--mono').trim() || 'monospace';
+// ---------- theme ----------
+let TK = {}, CC = {};
+const TOKS = ['bg','surface','surface-2','ink','muted','line','accent','link','tint','tree','no','r0','r1','r2','fog','unseen','cov','cov-edge','fr','fr-soft','bad','good','a-explore','a-trip','a-hold','a-chase','a-follow','a-wait','a-home'];
+function readTokens(){ const cs = getComputedStyle(document.documentElement); TOKS.forEach(k => TK[k] = cs.getPropertyValue('--' + k).trim()); CC = {}; }
+readTokens();
+const pc = document.createElement('canvas'); pc.width = pc.height = 1;
+const pctx = pc.getContext('2d', {willReadFrequently: true});
+function mix(layers){ pctx.clearRect(0,0,1,1); for (const c of layers){ pctx.fillStyle = c; pctx.fillRect(0,0,1,1); } return Array.from(pctx.getImageData(0,0,1,1).data); }
+function rgbOf(name){ if (!CC[name]) CC[name] = mix([TK[name]]); return CC[name]; }
+function rgba(name, a){ const c = rgbOf(name); return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
+const redraws = [];
+function onTheme(){ readTokens(); toyCols = null; redraws.forEach(f => f()); }
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onTheme);
+new MutationObserver(onTheme).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
+let rsT; addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => redraws.forEach(f => f()), 90); });
+function setup(cv){ const d = Math.min(2, devicePixelRatio || 1); const w = cv.clientWidth, h = cv.clientHeight; const W = Math.max(1, Math.round(w*d)), H = Math.max(1, Math.round(h*d)); if (cv.width !== W || cv.height !== H){ cv.width = W; cv.height = H; } const ctx = cv.getContext('2d'); ctx.setTransform(d,0,0,d,0,0); return {ctx, w, h}; }
+function rng(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const fmtT = t => `${Math.floor(t)} s`;
+const hyp = Math.hypot;
+function label(ctx, text, x, y, o = {}){
+  ctx.font = `${o.weight || 500} ${o.size || 11}px ${MONO}`;
+  const w = ctx.measureText(text).width + 8, h = (o.size || 11) + 6;
+  let bx = o.align === 'right' ? x - w : o.align === 'center' ? x - w/2 : x;
+  const by = y - h/2;
+  ctx.fillStyle = o.bg || TK.surface; ctx.strokeStyle = o.edge || TK.line; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, w, h, 3) : ctx.rect(bx, by, w, h); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = o.color || TK.ink; ctx.textBaseline = 'middle'; ctx.fillText(text, bx + 4, y + 0.5);
+}
+function robotGlyph(ctx, x, y, color, ring, name, r = 6.5){
+  if (ring){ ctx.beginPath(); ctx.arc(x, y, r + 4, 0, 7); ctx.strokeStyle = ring; ctx.lineWidth = 3.5; ctx.stroke(); }
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = TK.surface; ctx.lineWidth = 1.5; ctx.stroke();
+  if (name){ ctx.font = `600 12px ${MONO}`; ctx.fillStyle = color; ctx.textBaseline = 'middle'; ctx.fillText(name, x + r + 6, y - r - 3); }
+}
+function ghost(ctx, x, y, color, r = 6.5){ ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.setLineDash([3,2]); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); }
+function logScroll(box, li){ if (!li) return; const top = li.offsetTop - box.offsetTop; if (top < box.scrollTop || top > box.scrollTop + box.clientHeight - li.offsetHeight) box.scrollTop = Math.max(0, top - box.clientHeight / 2); }
+
+// ---------- timeline player ----------
+function player(o){
+  let t = o.rest ?? 0, playing = false, last = 0, started = false, autoPaused = false;
+  o.scrub.min = 0; o.scrub.max = o.dur; o.scrub.step = 0.1;
+  const rows = [];
+  if (o.log){ o.log.innerHTML = ''; (o.events || []).forEach(ev => { const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.innerHTML = `<span class="lt">${fmtT(ev.t)}</span><span>${ev.text}</span>`; b.onclick = () => { pause(); t = Math.min(o.dur, ev.t + 0.5); render(); }; li.appendChild(b); o.log.appendChild(li); rows.push([ev.t, li]); }); }
+  let lastCur = -2;
+  function render(){ o.draw(t); o.scrub.value = t; o.clock.textContent = fmtT(t); let cur = -1; rows.forEach(([et, li], k) => { const p = et <= t; li.classList.toggle('past', p); if (p) cur = k; }); if (cur !== lastCur){ rows.forEach(([, li], k) => li.classList.toggle('now', k === cur)); if (cur >= 0) logScroll(o.log, rows[cur][1]); lastCur = cur; } }
+  function btn(){ o.play.textContent = playing ? 'Pause' : (t >= o.dur ? 'Replay' : 'Play'); }
+  function frame(ts){ if (!playing) return; const dt = Math.min(0.1, (ts - last) / 1000); last = ts; t = Math.min(o.dur, t + dt * o.speed); render(); if (t >= o.dur){ playing = false; btn(); return; } requestAnimationFrame(frame); }
+  function play(){ if (t >= o.dur) t = 0; playing = true; last = performance.now(); btn(); requestAnimationFrame(frame); }
+  function pause(){ playing = false; autoPaused = false; btn(); }
+  o.play.onclick = () => playing ? pause() : play();
+  o.scrub.oninput = () => { pause(); t = +o.scrub.value; render(); };
+  redraws.push(render);
+  if (!RM && 'IntersectionObserver' in window){
+    new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting){ if (!started){ started = true; t = 0; play(); } else if (autoPaused){ autoPaused = false; play(); } }
+      else if (playing){ playing = false; autoPaused = true; btn(); }
+    }), {threshold: 0.3}).observe(o.observe);
+  }
+  render(); btn();
+  return {render};
+}
+
+/* =====================================================================
+   PART A — toy planner (real rules, toy scale)
+   ===================================================================== */
+const TR = 0.5, TW = 120, TH = 80, TN = TW * TH, MW = 60, MH = 40;
+const TRUNK_R = 0.35, INF_R = TRUNK_R + 1.5, SENSE = 8, GAIN_R = 12, SPEED = 0.44, DT = 0.5;
+const STARTS = [[3, 3], [3, 7]];
+const trees = [];
+{ const r = rng(40); let tries = 0;
+  while (trees.length < 44 && tries < 8000){ tries++; const x = 2 + r() * 56, y = 2 + r() * 36;
+    if (STARTS.some(s => hyp(s[0]-x, s[1]-y) < 5)) continue;
+    if (trees.some(t => hyp(t.x-x, t.y-y) < 4.4)) continue;
+    trees.push({x, y}); } }
+function cellsInDisk(x, y, r){ const out = []; const i0 = Math.max(0, Math.floor((x-r)/TR)), i1 = Math.min(TW-1, Math.floor((x+r)/TR)), j0 = Math.max(0, Math.floor((y-r)/TR)), j1 = Math.min(TH-1, Math.floor((y+r)/TR));
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (hyp((i+.5)*TR - x, (j+.5)*TR - y) <= r) out.push(j*TW + i); return out; }
+const cellOf = (x, y) => Math.min(TH-1, Math.max(0, Math.floor(y/TR))) * TW + Math.min(TW-1, Math.max(0, Math.floor(x/TR)));
+const cx = c => (c % TW + .5) * TR, cy = c => ((c / TW | 0) + .5) * TR;
+const TREEOF = new Int16Array(TN).fill(-1);
+trees.forEach((t, k) => { cellsInDisk(t.x, t.y, TRUNK_R + 0.12).forEach(c => TREEOF[c] = k); TREEOF[cellOf(t.x, t.y)] = k; t.halo = cellsInDisk(t.x, t.y, INF_R); });
+const BCX = 6, BCY = 4, NB = 24;
+const BC = []; for (let b = 0; b < NB; b++) BC.push([5 + 10 * (b % BCX), 5 + 10 * Math.floor(b / BCX)]);
+const sqOf = (x, y) => Math.min(BCY-1, Math.floor(y/10)) * BCX + Math.min(BCX-1, Math.floor(x/10));
+
+// ----- allocator: greedy makespan-balanced insertion + capped 2-opt (shared by A2 and A3) -----
+function solve(starts, cand, C){
+  const R = starts.length, tours = starts.map(() => []), cost = new Array(R).fill(0), used = new Set();
+  const dd = (a, b) => Math.round(hyp(a[0]-b[0], a[1]-b[1]) * 1000);
+  let left = cand.length;
+  while (left > 0){
+    let best = null;
+    for (const c of cand){ if (used.has(c)) continue;
+      for (let r = 0; r < R; r++){ const tr = tours[r];
+        for (let p = 0; p <= tr.length; p++){
+          const a = p === 0 ? starts[r] : C[tr[p-1]];
+          const delta = p === tr.length ? dd(a, C[c]) : dd(a, C[c]) + dd(C[c], C[tr[p]]) - dd(a, C[tr[p]]);
+          let mk = cost[r] + delta; for (let q = 0; q < R; q++) if (q !== r && cost[q] > mk) mk = cost[q];
+          if (!best || mk < best[0] || (mk === best[0] && (delta < best[1] || (delta === best[1] && (c < best[2] || (c === best[2] && (r < best[3] || (r === best[3] && p < best[4])))))))) best = [mk, delta, c, r, p];
+        } } }
+    tours[best[3]].splice(best[4], 0, best[2]); cost[best[3]] += best[1]; used.add(best[2]); left--;
+  }
+  for (let r = 0; r < R; r++){ const tr = tours[r], n = tr.length;
+    for (let pass = 0; pass < 2; pass++){ let imp = false;
+      for (let i = 0; i < n - 1; i++) for (let j = i + 1; j < n; j++){
+        const a = i === 0 ? starts[r] : C[tr[i-1]], b = C[tr[i]], c = C[tr[j]], e = j + 1 < n ? C[tr[j+1]] : null;
+        const delta = dd(a, c) + (e ? dd(b, e) : 0) - dd(a, b) - (e ? dd(c, e) : 0);
+        if (delta < 0){ let x = i, y = j; while (x < y){ const tmp = tr[x]; tr[x] = tr[y]; tr[y] = tmp; x++; y--; } imp = true; }
+      }
+      if (!imp) break; } }
+  return tours;
+}
+
+// ----- toy sim -----
+function newToy(){
+  const S = {t: 0, known: new Uint8Array(TN), blk: new Uint8Array(TN), seen: new Uint8Array(trees.length), nUnk: TN, finished: false, finT: null, lastCensus: -99,
+    board: Array.from({length: NB}, () => ({st: 0, uf: 1, wo: false})), robots: STARTS.map((s, i) => mkR(i, s[0], s[1])), capture: null, best: null};
+  S.robots.forEach(r => reveal(S, r.x, r.y)); census(S); return S;
+}
+function mkR(id, x, y){ return {id, x, y, sx: x, sy: y, st: 'PLAN', goal: null, path: null, pi: 0, visited: [], failed: [], tour: [], wdT: 0, wdX: x, wdY: y, reached: 0, fails: 0, trail: [[x, y]], lastFocus: -1, lastFocusUf: 1, skip: 0, nextPlan: 0, fin: false}; }
+const NRS = 180;
+function reveal(S, x, y){
+  for (let k = 0; k < NRS; k++){ const a = 2 * Math.PI * k / NRS, ca = Math.cos(a), sa = Math.sin(a);
+    for (let d = 0; d <= SENSE; d += 0.25){ const i = Math.floor((x + ca*d) / TR), j = Math.floor((y + sa*d) / TR);
+      if (i < 0 || j < 0 || i >= TW || j >= TH) break; const c = j*TW + i;
+      if (!S.known[c]){ S.known[c] = 1; S.nUnk--; }
+      const tk = TREEOF[c]; if (tk >= 0){ seeTree(S, tk); break; } } }
+}
+function seeTree(S, k){ if (S.seen[k]) return; S.seen[k] = 1; for (const c of trees[k].halo){ S.blk[c] = 1; if (!S.known[c]){ S.known[c] = 1; S.nUnk--; } } }
+function census(S){
+  for (let b = 0; b < NB; b++){ const bx = b % BCX, by = Math.floor(b / BCX); let unk = 0;
+    for (let j = by*20; j < by*20 + 20; j++) for (let i = bx*20; i < bx*20 + 20; i++) if (!S.known[j*TW + i]) unk++;
+    const B = S.board[b], uf = unk / 400; B.uf = uf;
+    if (B.wo){ B.st = 2; continue; }
+    if (400 - unk < 20) B.st = 0; else if (uf <= 0.15 || (B.st === 2 && uf <= 0.35)) B.st = 2; else B.st = 1; }
+}
+function frontierMask(S){ const f = new Uint8Array(TN);
+  for (let c = 0; c < TN; c++){ if (!S.known[c] || S.blk[c]) continue; const i = c % TW, j = c / TW | 0;
+    if ((i > 0 && !S.known[c-1]) || (i < TW-1 && !S.known[c+1]) || (j > 0 && !S.known[c-TW]) || (j < TH-1 && !S.known[c+TW])) f[c] = 1; }
+  return f; }
+function candidatesOf(f){
+  const seen = new Uint8Array(TN), cands = []; let comp = 0;
+  for (let c0 = 0; c0 < TN; c0++){ if (!f[c0] || seen[c0]) continue;
+    const mem = [c0]; seen[c0] = 1;
+    for (let q = 0; q < mem.length; q++){ const c = mem[q], i = c % TW, j = c / TW | 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++){ if (!di && !dj) continue; const ii = i + di, jj = j + dj;
+        if (ii < 0 || jj < 0 || ii >= TW || jj >= TH) continue; const n = jj*TW + ii; if (f[n] && !seen[n]){ seen[n] = 1; mem.push(n); } } }
+    if (mem.length < 3){ comp++; continue; }
+    const bins = new Map();
+    for (const c of mem){ const key = Math.floor(cx(c)/5) + ',' + Math.floor(cy(c)/5); if (!bins.has(key)) bins.set(key, []); bins.get(key).push(c); }
+    for (const m of bins.values()){ let sx = 0, sy = 0; m.forEach(c => { sx += cx(c); sy += cy(c); }); sx /= m.length; sy /= m.length;
+      let bc = m[0], bd = 1e9; m.forEach(c => { const d = hyp(cx(c)-sx, cy(c)-sy); if (d < bd - 1e-9){ bd = d; bc = c; } });
+      cands.push({cell: bc, x: cx(bc), y: cy(bc), members: m, comp}); }
+    comp++; }
+  return cands; }
+const NRG = 160; const STAMP = new Int32Array(TN); let stampId = 0;
+function gainAt(S, x, y, keep){ stampId++; let n = 0; const ends = keep ? new Float32Array(NRG) : null, cells = keep ? [] : null;
+  for (let k = 0; k < NRG; k++){ const a = 2*Math.PI*k/NRG, ca = Math.cos(a), sa = Math.sin(a); let d = 0.3, end = GAIN_R;
+    for (; d <= GAIN_R; d += 0.25){ const i = Math.floor((x + ca*d)/TR), j = Math.floor((y + sa*d)/TR);
+      if (i < 0 || j < 0 || i >= TW || j >= TH){ end = d; break; } const c = j*TW + i;
+      if (S.blk[c]){ end = d; break; }
+      if (!S.known[c] && STAMP[c] !== stampId){ STAMP[c] = stampId; n++; if (keep) cells.push(c); } }
+    if (keep) ends[k] = Math.min(end, GAIN_R); }
+  return {g: n * TR * TR, ends, cells}; }
+function flood(S, x, y){
+  const dist = new Float64Array(TN).fill(Infinity), par = new Int32Array(TN).fill(-1), src = cellOf(x, y);
+  dist[src] = 0; const hk = [0], hv = [src];
+  const push = (k, v) => { hk.push(k); hv.push(v); let i = hk.length - 1; while (i > 0){ const p = (i-1) >> 1; if (hk[p] <= hk[i]) break; [hk[p], hk[i]] = [hk[i], hk[p]]; [hv[p], hv[i]] = [hv[i], hv[p]]; i = p; } };
+  const pop = () => { const k = hk[0], v = hv[0], lk = hk.pop(), lv = hv.pop(); if (hk.length){ hk[0] = lk; hv[0] = lv; let i = 0; for (;;){ const l = 2*i+1, r = l+1; let m = i; if (l < hk.length && hk[l] < hk[m]) m = l; if (r < hk.length && hk[r] < hk[m]) m = r; if (m === i) break; [hk[m], hk[i]] = [hk[i], hk[m]]; [hv[m], hv[i]] = [hv[i], hv[m]]; i = m; } } return [k, v]; };
+  while (hk.length){ const [d, c] = pop(); if (d > dist[c]) continue; const i = c % TW, j = c / TW | 0;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++){ if (!di && !dj) continue; const ii = i + di, jj = j + dj;
+      if (ii < 0 || jj < 0 || ii >= TW || jj >= TH) continue; const n = jj*TW + ii; if (S.blk[n] && (!S.blk[c] || (TREEOF[n] >= 0 && S.seen[TREEOF[n]]))) continue;
+      const nd = d + (di && dj ? TR * Math.SQRT2 : TR); if (nd < dist[n]){ dist[n] = nd; par[n] = c; push(nd, n); } } }
+  return {dist, par, src}; }
+function pathFrom(fl, goal){ const p = []; let c = goal; while (c !== -1 && c !== fl.src){ p.push(c); c = fl.par[c]; } p.reverse(); return p; }
+function rankOf(sq, tour){ const sx = sq % BCX, sy = Math.floor(sq / BCX); for (let k = 0; k < tour.length; k++){ const tx = tour[k] % BCX, ty = Math.floor(tour[k] / BCX); if (Math.abs(sx-tx) <= 1 && Math.abs(sy-ty) <= 1) return k; } return tour.length; }
+const REASONS = {close: 'too close', map: 'blocked', unreach: 'can\'t reach', visited: 'just visited', failed: 'failed before', mate: 'teammate nearer'};
+function planFor(S, r, keep){
+  const fm = frontierMask(S), cands = candidatesOf(fm);
+  const active = S.robots.filter(q => !q.fin);
+  const starts = active.map(q => [q.x, q.y]);
+  const bc = []; for (let b = 0; b < NB; b++) if (S.board[b].st !== 2) bc.push(b);
+  let tours = bc.length ? solve(starts, bc, BC) : active.map(() => []);
+  let me = active.indexOf(r), tour = me >= 0 ? tours[me] : [];
+  if (tour.length){ const f = tour[0], uf = S.board[f].uf;
+    if (f === r.lastFocus && uf >= r.lastFocusUf - 1e-9) r.skip++; else r.skip = 0;
+    r.lastFocus = f; r.lastFocusUf = uf;
+    if (r.skip >= 3){ S.board[f].wo = true; S.board[f].st = 2; r.skip = 0; r.lastFocus = -1;
+      const bc2 = bc.filter(b => b !== f); tours = bc2.length ? solve(starts, bc2, BC) : active.map(() => []); tour = tours[me]; } }
+  r.tour = tour;
+  if (!cands.length) return {none: true, cands: [], tour};
+  const fl = flood(S, r.x, r.y);
+  for (const c of cands){ const G = gainAt(S, c.x, c.y, keep); c.gain = G.g; if (keep){ c.ends = G.ends; c.ucells = G.cells; }
+    c.cost = fl.dist[c.cell]; c.U = isFinite(c.cost) ? c.gain / Math.sqrt(0.1 + c.cost) : -Infinity; c.sq = sqOf(c.x, c.y); c.rank = rankOf(c.sq, tour); }
+  const order = cands.slice().sort((a, b) => a.rank - b.rank || b.U - a.U || a.cell - b.cell);
+  const peers = S.robots.filter(q => q !== r);
+  function check(c, tier){
+    if (hyp(c.x - r.x, c.y - r.y) < 4) return 'close';
+    if (!S.known[c.cell] || S.blk[c.cell]) return 'map';
+    if (!isFinite(c.cost)) return 'unreach';
+    if (tier < 2 && r.visited.some(v => S.t - v.t < 180 && hyp(v.x - c.x, v.y - c.y) < 6)) return 'visited';
+    if (tier < 1 && r.failed.some(f => (S.t - f.t < 240 || f.n >= 3) && hyp(f.x - c.x, f.y - c.y) < 2)) return 'failed';
+    if (peers.some(q => q.st === 'NAV' && q.goal && hyp(q.goal.x - c.x, q.goal.y - c.y) < 10 && hyp(q.x - c.x, q.y - c.y) < hyp(r.x - c.x, r.y - c.y))) return 'mate';
+    return null; }
+  let goal = null, tier = 0;
+  for (; tier < 3 && !goal; tier++){ for (const c of order){ c.v = check(c, tier); if (!c.v){ goal = c; break; } } if (goal) break; }
+  if (goal){ const gi = order.indexOf(goal); order.forEach((c, k) => { if (k > gi) c.v = '–'; }); goal.v = 'goal'; }
+  return {cands, order, goal, fl, tour, tier, fm};
+}
+function failGoal(S, r){ const g = r.goal; const e = r.failed.find(f => hyp(f.x - g.x, f.y - g.y) < 2); if (e){ e.n++; e.t = S.t; } else r.failed.push({x: g.x, y: g.y, t: S.t, n: 1}); r.fails++; r.st = 'PLAN'; r.goal = null; }
+function goHome(S, r){ const fl = flood(S, r.x, r.y), hc = cellOf(r.sx, r.sy); if (!isFinite(fl.dist[hc])){ r.st = 'DONE'; return; } r.path = pathFrom(fl, hc); r.pi = 0; r.st = 'HOME'; r.goal = {x: cx(hc), y: cy(hc), cell: hc}; }
+function toyStep(S){
+  S.t += DT;
+  if (S.t - S.lastCensus >= 5){ census(S); S.lastCensus = S.t; }
+  if (!S.finished && S.nUnk / TN < 0.10){ S.finished = true; S.finT = S.t; }
+  for (const r of S.robots){
+    if (r.st === 'DONE') continue;
+    if (r.st === 'PLAN'){
+      if (S.finished){ r.fin = true; goHome(S, r); continue; }
+      if (S.t < r.nextPlan) continue;
+      const P = planFor(S, r, !!S.capture);
+      if (S.capture) S.capture(S, r, P);
+      if (P.goal){ r.goal = {x: P.goal.x, y: P.goal.y, cell: P.goal.cell}; r.path = pathFrom(P.fl, P.goal.cell); r.pi = 0; r.st = 'NAV'; r.wdT = S.t; r.wdX = r.x; r.wdY = r.y; }
+      else r.nextPlan = S.t + 2;
+      continue; }
+    let rem = SPEED * DT;
+    while (rem > 1e-6 && r.pi < r.path.length){ const c = r.path[r.pi], tx = cx(c), ty = cy(c), d = hyp(tx - r.x, ty - r.y);
+      if (d <= rem){ r.x = tx; r.y = ty; rem -= d; r.pi++; } else { r.x += (tx - r.x)/d*rem; r.y += (ty - r.y)/d*rem; rem = 0; } }
+    r.trail.push([r.x, r.y]);
+    reveal(S, r.x, r.y);
+    const gc = r.goal.cell;
+    if (r.st === 'NAV' && S.blk[gc]){ r.st = 'PLAN'; r.goal = null; continue; }
+    let bad = false; if (!S.blk[cellOf(r.x, r.y)]) for (let k = r.pi; k < r.path.length; k++) if (S.blk[r.path[k]]){ bad = true; break; }
+    if (bad){ const fl = flood(S, r.x, r.y); if (!isFinite(fl.dist[gc])){ if (r.st === 'NAV') failGoal(S, r); else r.st = 'DONE'; continue; } r.path = pathFrom(fl, gc); r.pi = 0; }
+    if (r.pi >= r.path.length && hyp(r.x - cx(gc), r.y - cy(gc)) <= 0.4){
+      if (r.st === 'NAV'){ r.visited.push({x: cx(gc), y: cy(gc), t: S.t}); r.failed = r.failed.filter(f => hyp(f.x - cx(gc), f.y - cy(gc)) > 2); r.reached++; r.st = 'PLAN'; r.goal = null; }
+      else r.st = 'DONE';
+      continue; }
+    if (S.t - r.wdT >= 15){ if (r.st === 'NAV' && hyp(r.x - r.wdX, r.y - r.wdY) < 0.2){ failGoal(S, r); continue; } r.wdT = S.t; r.wdX = r.x; r.wdY = r.y; }
+  }
+}
+
+// ----- find a telling decision for A1 -----
+let SNAP = null;
+const HIST = {};
+{ const S = newToy(); let bestScore = -1;
+  S.capture = (S, r, P) => {
+    if (!P.goal) return; P.order.forEach(c => { if (c.v && c.v !== '–') HIST[c.v] = (HIST[c.v] || 0) + 1; });
+    if (S.t < 60 || S.finished || P.cands.length < 4) return;
+    const rs = new Set(P.order.filter(c => c.v && c.v !== 'goal' && c.v !== '–').map(c => c.v));
+    const gi = P.order.indexOf(P.goal);
+    const score = rs.size * 10 + Math.min(gi, 6) + (P.tour.length ? 1 : 0);
+    if (score > bestScore){ bestScore = score;
+      const q = S.robots.find(o => o !== r);
+      SNAP = {t: S.t, known: S.known.slice(), blk: S.blk.slice(), seen: S.seen.slice(), me: r.id, rx: r.x, ry: r.y, trail: r.trail.slice(),
+        mate: {id: q.id, x: q.x, y: q.y, goal: q.st === 'NAV' && q.goal ? {...q.goal} : null, trail: q.trail.slice()},
+        visited: r.visited.filter(v => S.t - v.t < 180).map(v => ({...v})), failed: r.failed.map(f => ({...f})), tour: P.tour.slice(),
+        board: S.board.map(b => ({...b})), cands: P.cands, order: P.order, goal: P.goal, dist: P.fl.dist, path: pathFrom(P.fl, P.goal.cell), fm: P.fm, tier: P.tier}; }
+  };
+  let guard = 0; while (S.t < 430 && guard++ < 2000) toyStep(S);
+  DBG.push('A1 walk results over all plans ' + JSON.stringify(HIST)); DBG.push('A1 snapshot t=' + (SNAP && SNAP.t) + ' cands=' + (SNAP && SNAP.cands.length) + ' reasons=' + (SNAP && [...new Set(SNAP.order.map(c => c.v))].join('/')) + ' tier=' + (SNAP && SNAP.tier));
+}
+
+let toyCols = null;
+function toyColors(){ if (toyCols) return toyCols;
+  const F = mix([TK.surface]), U = mix([TK.unseen]), B = mix([TK.surface, TK.tree]), ink = mix([TK.ink]);
+  const T = B.map((v, i) => i < 3 ? Math.round(v * 0.45 + ink[i] * 0.55) : 255);
+  toyCols = {F, U, B, T}; return toyCols; }
+const toyOff = document.createElement('canvas'); toyOff.width = TW; toyOff.height = TH;
+const toyOctx = toyOff.getContext('2d');
+function paintToy(known, blk, seen){
+  const C = toyColors(), img = toyOctx.createImageData(TW, TH), d = img.data;
+  for (let j = 0; j < TH; j++) for (let i = 0; i < TW; i++){ const c = j*TW + i, o = ((TH - 1 - j) * TW + i) * 4;
+    const k = !known[c] ? C.U : (TREEOF[c] >= 0 && seen[TREEOF[c]]) ? C.T : blk[c] ? C.B : C.F;
+    d[o] = k[0]; d[o+1] = k[1]; d[o+2] = k[2]; d[o+3] = 255; }
+  toyOctx.putImageData(img, 0, 0); return toyOff; }
+function cellLayer(cells, colorRGB, alpha){ const img = toyOctx.createImageData(TW, TH), d = img.data, a = Math.round(alpha * 255);
+  for (const c of cells){ const i = c % TW, j = c / TW | 0, o = ((TH - 1 - j) * TW + i) * 4; d[o] = colorRGB[0]; d[o+1] = colorRGB[1]; d[o+2] = colorRGB[2]; d[o+3] = a; }
+  const cv = document.createElement('canvas'); cv.width = TW; cv.height = TH; cv.getContext('2d').putImageData(img, 0, 0); return cv; }
+function boardLines(ctx, w, h){ ctx.strokeStyle = rgba('muted', 0.35); ctx.lineWidth = 1; ctx.setLineDash([2, 4]);
+  for (let x = 10; x < MW; x += 10){ ctx.beginPath(); ctx.moveTo(x/MW*w, 0); ctx.lineTo(x/MW*w, h); ctx.stroke(); }
+  for (let y = 10; y < MH; y += 10){ ctx.beginPath(); ctx.moveTo(0, h - y/MH*h); ctx.lineTo(w, h - y/MH*h); ctx.stroke(); }
+  ctx.setLineDash([]); }
+function trailLine(ctx, tr, X, Y, color, a){ if (tr.length < 2) return; ctx.beginPath(); ctx.moveTo(X(tr[0][0]), Y(tr[0][1])); for (let k = 1; k < tr.length; k += 2) ctx.lineTo(X(tr[k][0]), Y(tr[k][1])); ctx.lineTo(X(tr[tr.length-1][0]), Y(tr[tr.length-1][1])); ctx.strokeStyle = rgba(color, a); ctx.lineWidth = 1.6; ctx.stroke(); }
+
+
+// ----- A1: four steps -----
+(function(){
+  if (!SNAP) return;
+  const s = SNAP, cv = $('a1c'), RN = ['R1', 'R2'], RC = ['r0', 'r1'];
+  const me = RN[s.me], mate = RN[s.mate.id];
+  const letters = new Map(); s.cands.slice().sort((a, b) => a.x - b.x || a.y - b.y).forEach((c, k) => letters.set(c, k < 26 ? String.fromCharCode(65 + k) : 'Z' + (k - 25)));
+  const walkN = s.order.indexOf(s.goal) + 1;
+  const fcells = []; for (let c = 0; c < TN; c++) if (s.fm[c]) fcells.push(c);
+  let maxD = 0; s.cands.forEach(c => { if (isFinite(c.cost) && c.cost > maxD) maxD = c.cost; }); maxD = Math.max(maxD, 5) * 1.08;
+  const reasonsUsed = [...new Set(s.order.slice(0, walkN - 1).map(c => REASONS[c.v]).filter(Boolean))];
+  const STEPS = [
+    {h: 'Find the edges', dur: 5, p: `${me}'s map ${Math.round(s.t)} s into the toy run. Dark ground is not seen yet, light ground is free, and the shaded rings are trunks with their safety ring. New map comes from the edge between free and unseen ground (purple). The robot cuts the edge into short stretches and marks one spot on each: ${s.cands.length} spots here. ${mate} is already heading for its own goal (dashed line).`},
+    {h: 'Score each spot', dur: 12, p: `For each spot, ${me} asks two things. How much unseen ground would it see from there? Rays go out until they hit a trunk. How long is the drive? Unseen ground counts as drivable. Score = new area ÷ √(trip length), so distance counts only a little: a spot 4× farther away needs 2× the new area to tie.`},
+    {h: 'The team\'s area comes first', dur: 4, p: `The robots split the forest into 10 m squares and share them out as one tour per robot (numbered on the map). Each robot works out the same split from the same shared information, so no one has to hand out jobs. Spots near the first square of ${me}'s tour come first, and score only decides between spots near the same square. While robots are out of contact, their copies of the split drift apart and some squares get done twice.`},
+    {h: 'Check, then go', dur: 8, p: `${me} goes down the list and takes the first spot that passes every check. A spot is skipped if it is under 4 m away, can't be reached, was just visited, failed recently, or a teammate nearer to it is already heading there.${reasonsUsed.length ? ' Skipped here: ' + reasonsUsed.join(', ') + '.' : ''} Then ${me} drives there and plans again when it arrives. If it is stuck for 15 s, the spot goes on its failed list.`}
+  ];
+  // the drawing below is written for the nine fine-grained stages; each of the four steps plays a few of them
+  let ns = STEPS.length - 1, nu = 1, step = 8, u = 1, playing = false, last = 0, started = false;
+  function mapStep(){
+    if (ns === 0){ if (nu < 0.5){ step = 1; u = nu / 0.5; } else { step = 2; u = 1; } }
+    else if (ns === 1){ if (nu < 0.6){ step = 3; u = nu / 0.6; } else if (nu < 0.8){ step = 4; u = (nu - 0.6) / 0.2; } else { step = 5; u = 1; } }
+    else if (ns === 2){ step = 6; u = 1; }
+    else if (nu < 0.6){ step = 7; u = nu / 0.6; } else { step = 8; u = (nu - 0.6) / 0.4; }
+  }
+  const dots = $('a1dots'); STEPS.forEach((st, k) => { const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.textContent = k + 1; b.title = st.h; b.onclick = () => { stop(); ns = k; nu = 1; render(); }; li.appendChild(b); dots.appendChild(li); });
+  const X = w => x => x / MW * w, Y = h => y => h - y / MH * h;
+  const fmt = (v, d) => isFinite(v) ? v.toFixed(d) : '–';
+  function table(){
+    const showG = step >= 3, showC = step >= 4, showU = step >= 5, showR = step >= 6, showV = step >= 7;
+    const list = showR ? s.order : s.cands.slice().sort((a, b) => letters.get(a).localeCompare(letters.get(b)));
+    const walked = showV ? (step > 7 ? walkN : Math.min(walkN, Math.floor(u * walkN + 0.999))) : 0;
+    let curIdx = -1; if (step === 3) curIdx = Math.min(s.cands.length - 1, Math.floor(u * s.cands.length));
+    const cur3 = curIdx >= 0 ? s.cands[curIdx] : null;
+    let html = '<thead><tr><th>Spot</th><th>New area m²</th><th>Trip m</th><th>Score</th><th>Team order</th><th>Check</th></tr></thead><tbody>';
+    list.forEach((c, k) => { const wi = s.order.indexOf(c); const done = showV && wi < walked;
+      const v = done ? (c.v === 'goal' ? 'goal' : REASONS[c.v] || '–') : '';
+      const cls = (step === 3 && c === cur3) || (step === 7 && wi === walked - 1 && u < 1) ? ' class="cur"' : '';
+      html += `<tr${cls}><td>${letters.get(c)}</td><td>${showG && (step > 3 || s.cands.indexOf(c) <= curIdx) ? Math.round(c.gain) : '–'}</td><td>${showC ? fmt(c.cost, 1) : '–'}</td><td>${showU ? fmt(c.U, 1) : '–'}</td><td>${showR ? (c.rank < s.tour.length ? c.rank + 1 : 'none') : '–'}</td><td class="${v === 'goal' ? 'v-goal' : v && v !== '–' ? 'v-skip' : ''}">${v}</td></tr>`; });
+    $('a1t').innerHTML = html + '</tbody>';
+  }
+  function draw(){
+    const {ctx, w, h} = setup(cv), x = X(w), y = Y(h), sc = w / MW;
+    ctx.clearRect(0, 0, w, h);
+    ctx.imageSmoothingEnabled = false; ctx.drawImage(paintToy(s.known, s.blk, s.seen), 0, 0, w, h);
+    boardLines(ctx, w, h);
+    trailLine(ctx, s.trail, x, y, RC[s.me], 0.55); trailLine(ctx, s.mate.trail, x, y, RC[s.mate.id], 0.4);
+    if (step >= 6){ s.tour.forEach((b, k) => { const bx = (b % BCX) * 10, by = Math.floor(b / BCX) * 10;
+        if (k === 0){ ctx.fillStyle = rgba(RC[s.me], 0.10); ctx.fillRect(x(bx), y(by + 10), 10*sc, 10*sc); ctx.strokeStyle = TK[RC[s.me]]; ctx.lineWidth = 2; ctx.strokeRect(x(bx) + 1, y(by + 10) + 1, 10*sc - 2, 10*sc - 2); }
+        if (k < 8) label(ctx, 'tour ' + (k + 1), x(bx) + 3, y(by + 10) + 10, {size: 10, color: TK[RC[s.me]]}); }); }
+    if (step === 1 || step === 2){ ctx.imageSmoothingEnabled = false; ctx.drawImage(cellLayer(fcells, rgbOf('fr'), step === 1 ? 0.95 : 0.45), 0, 0, w, h); }
+    if (step === 2){ s.cands.forEach((c, k) => ctx.drawImage(cellLayer(c.members, rgbOf('fr'), k % 2 ? 0.95 : 0.6), 0, 0, w, h)); }
+    if (step === 3){ const n = s.cands.length, k = Math.min(n - 1, Math.floor(u * n)), c = s.cands[k];
+      if (u < 1){ ctx.drawImage(cellLayer(c.ucells, rgbOf('fr'), 0.55), 0, 0, w, h);
+        ctx.strokeStyle = rgba('fr', 0.35); ctx.lineWidth = 1; ctx.beginPath();
+        for (let q = 0; q < NRG; q += 2){ const a = 2*Math.PI*q/NRG; ctx.moveTo(x(c.x), y(c.y)); ctx.lineTo(x(c.x + Math.cos(a)*c.ends[q]), y(c.y + Math.sin(a)*c.ends[q])); } ctx.stroke(); } }
+    if (step === 4){ const lim = u * maxD, img = toyOctx.createImageData(TW, TH), d = img.data, A = rgbOf('accent');
+      for (let c = 0; c < TN; c++){ const v = s.dist[c]; if (!isFinite(v) || v > lim) continue; const i = c % TW, j = c / TW | 0, o = ((TH-1-j)*TW + i)*4;
+        d[o] = A[0]; d[o+1] = A[1]; d[o+2] = A[2]; d[o+3] = Math.round(30 + 90 * (1 - v / maxD)); }
+      const tmp = document.createElement('canvas'); tmp.width = TW; tmp.height = TH; tmp.getContext('2d').putImageData(img, 0, 0); ctx.drawImage(tmp, 0, 0, w, h); }
+    if (step === 7){ const k = Math.min(walkN - 1, Math.floor(u * walkN)), c = s.order[k];
+      const ring = (cx0, cy0, r, col) => { ctx.beginPath(); ctx.arc(x(cx0), y(cy0), r*sc, 0, 7); ctx.setLineDash([4, 3]); ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.stroke(); ctx.setLineDash([]); };
+      ring(s.rx, s.ry, 4, rgba('ink', 0.5));
+      s.visited.forEach(v => ring(v.x, v.y, 6, rgba(RC[s.me], 0.55)));
+      s.failed.forEach(f => ring(f.x, f.y, 2, TK.bad));
+      if (s.mate.goal) ring(s.mate.goal.x, s.mate.goal.y, 10, rgba(RC[s.mate.id], 0.55));
+      if (u < 1 && c){ ctx.beginPath(); ctx.arc(x(c.x), y(c.y), 12, 0, 7); ctx.strokeStyle = TK.fr; ctx.lineWidth = 2.5; ctx.stroke(); } }
+    // visited / failed marks
+    s.visited.forEach(v => { ctx.beginPath(); ctx.arc(x(v.x), y(v.y), 3.5, 0, 7); ctx.strokeStyle = TK[RC[s.me]]; ctx.lineWidth = 1.5; ctx.stroke(); });
+    s.failed.forEach(f => { const px = x(f.x), py = y(f.y); ctx.strokeStyle = TK.bad; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px-4, py-4); ctx.lineTo(px+4, py+4); ctx.moveTo(px+4, py-4); ctx.lineTo(px-4, py+4); ctx.stroke(); });
+    if (s.mate.goal){ ctx.setLineDash([4, 3]); ctx.strokeStyle = TK[RC[s.mate.id]]; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x(s.mate.x), y(s.mate.y)); ctx.lineTo(x(s.mate.goal.x), y(s.mate.goal.y)); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(x(s.mate.goal.x), y(s.mate.goal.y), 4, 0, 7); ctx.fillStyle = TK[RC[s.mate.id]]; ctx.fill(); }
+    if (step >= 2){ const walked = step > 7 ? walkN : step === 7 ? Math.min(walkN, Math.floor(u * walkN + 0.999)) : 0;
+      s.cands.forEach(c => { const px = x(c.x), py = y(c.y), wi = s.order.indexOf(c);
+        let rad = 4; if (step >= 5 && isFinite(c.U)) rad = 3 + Math.min(6, c.U / 4);
+        ctx.beginPath(); ctx.arc(px, py, rad, 0, 7); ctx.fillStyle = TK.fr; ctx.fill(); ctx.strokeStyle = TK.surface; ctx.lineWidth = 1.2; ctx.stroke();
+        let txt = letters.get(c);
+        if (step === 3 && s.cands.indexOf(c) < Math.floor(u * s.cands.length + (u >= 1 ? 1 : 0))) txt += ' ' + Math.round(c.gain) + ' m²';
+        if (step === 4 && isFinite(c.cost) && c.cost <= u * maxD) txt += ' ' + c.cost.toFixed(0) + ' m';
+        if (step === 5 || step === 6) txt += ' ' + (isFinite(c.U) ? c.U.toFixed(1) : '–');
+        let col = TK.ink, edge = TK.line;
+        if (step >= 7 && wi < walked){ if (c.v === 'goal'){ txt += ' ✓'; col = TK.good; edge = TK.good; } else { txt += ' ✗ ' + (REASONS[c.v] || ''); col = TK.bad; } }
+        label(ctx, txt, px + 7, py - 9, {size: 10, color: col, edge}); }); }
+    if (step === 8){ const n = Math.max(1, Math.floor(u * s.path.length)); ctx.beginPath(); ctx.moveTo(x(s.rx), y(s.ry)); for (let k = 0; k < n; k++) ctx.lineTo(x(cx(s.path[k])), y(cy(s.path[k]))); ctx.strokeStyle = TK[RC[s.me]]; ctx.lineWidth = 2.5; ctx.stroke(); }
+    if (step >= 7 && (step > 7 || u >= 1)){ const g = s.goal; ctx.beginPath(); ctx.arc(x(g.x), y(g.y), 9, 0, 7); ctx.strokeStyle = TK.good; ctx.lineWidth = 2.5; ctx.stroke(); }
+    robotGlyph(ctx, x(s.mate.x), y(s.mate.y), TK[RC[s.mate.id]], null, mate);
+    robotGlyph(ctx, x(s.rx), y(s.ry), TK[RC[s.me]], null, me);
+  }
+  function render(){ mapStep(); const st = STEPS[ns]; $('a1k').textContent = `Step ${ns + 1} of ${STEPS.length}`; $('a1h').textContent = st.h; $('a1p').textContent = st.p;
+    [...dots.querySelectorAll('button')].forEach((b, k) => b.classList.toggle('on', k === ns));
+    $('a1back').disabled = ns === 0; $('a1next').disabled = ns === STEPS.length - 1;
+    $('a1tw').hidden = ns === 0;
+    draw(); table(); }
+  function frame(ts){ if (!playing) return; const dt = Math.min(0.1, (ts - last) / 1000); last = ts; nu += dt / STEPS[ns].dur;
+    if (nu >= 1){ if (ns < STEPS.length - 1){ ns++; nu = 0; } else { nu = 1; playing = false; } }
+    render(); btn(); if (playing) requestAnimationFrame(frame); }
+  function btn(){ $('a1play').textContent = playing ? 'Pause' : 'Play'; }
+  function stop(){ playing = false; btn(); }
+  $('a1play').onclick = () => { if (playing){ stop(); return; } if (ns === STEPS.length - 1 && nu >= 1) ns = 0; nu = nu >= 1 ? 0 : nu; playing = true; last = performance.now(); btn(); requestAnimationFrame(frame); };
+  $('a1back').onclick = () => { stop(); ns = Math.max(0, ns - 1); nu = 1; render(); };
+  $('a1next').onclick = () => { stop(); ns = Math.min(STEPS.length - 1, ns + 1); nu = 1; render(); };
+  redraws.push(render); render();
+  if (!RM && 'IntersectionObserver' in window) new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && !started){ started = true; ns = 0; nu = 0; playing = true; last = performance.now(); btn(); requestAnimationFrame(frame); } }), {threshold: 0.4}).observe(cv);
+})();
+
+// ----- A2: running loop -----
+(function(){
+  const cv = $('a2c'), RN = ['R1', 'R2'], RC = ['r0', 'r1'];
+  let S = newToy(), playing = false, last = 0, started = false, acc = 0;
+  const ST = {PLAN: 'planning', NAV: 'driving to a goal', HOME: 'driving home', DONE: 'home'};
+  function draw(){
+    const {ctx, w, h} = setup(cv), x = v => v / MW * w, y = v => h - v / MH * h, sc = w / MW;
+    ctx.clearRect(0, 0, w, h); ctx.imageSmoothingEnabled = false; ctx.drawImage(paintToy(S.known, S.blk, S.seen), 0, 0, w, h);
+    S.board.forEach((B, b) => { if (B.st === 2){ const bx = (b % BCX) * 10, by = Math.floor(b / BCX) * 10; ctx.fillStyle = TK.cov; ctx.fillRect(x(bx), y(by + 10), 10*sc, 10*sc); ctx.strokeStyle = TK['cov-edge']; ctx.lineWidth = 1; ctx.strokeRect(x(bx) + .5, y(by + 10) + .5, 10*sc - 1, 10*sc - 1); } });
+    boardLines(ctx, w, h);
+    S.robots.forEach((r, i) => { if (!r.fin && r.tour.length){ const b = r.tour[0], bx = (b % BCX) * 10, by = Math.floor(b / BCX) * 10; ctx.strokeStyle = TK[RC[i]]; ctx.lineWidth = 2; ctx.setLineDash(i ? [5, 3] : []); ctx.strokeRect(x(bx) + 2 + i*2, y(by + 10) + 2 + i*2, 10*sc - 4 - i*4, 10*sc - 4 - i*4); ctx.setLineDash([]); } });
+    S.robots.forEach((r, i) => { trailLine(ctx, r.trail, x, y, RC[i], 0.45);
+      r.visited.forEach(v => { ctx.beginPath(); ctx.arc(x(v.x), y(v.y), 3, 0, 7); ctx.strokeStyle = rgba(RC[i], 0.8); ctx.lineWidth = 1.3; ctx.stroke(); });
+      r.failed.forEach(f => { const px = x(f.x), py = y(f.y); ctx.strokeStyle = TK.bad; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px-4, py-4); ctx.lineTo(px+4, py+4); ctx.moveTo(px+4, py-4); ctx.lineTo(px-4, py+4); ctx.stroke(); });
+      if ((r.st === 'NAV' || r.st === 'HOME') && r.path){ ctx.beginPath(); ctx.moveTo(x(r.x), y(r.y)); for (let k = r.pi; k < r.path.length; k += 2) ctx.lineTo(x(cx(r.path[k])), y(cy(r.path[k]))); ctx.lineTo(x(r.goal.x), y(r.goal.y)); ctx.strokeStyle = rgba(RC[i], 0.9); ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+        ctx.beginPath(); ctx.arc(x(r.goal.x), y(r.goal.y), 4.5, 0, 7); ctx.fillStyle = TK.fr; ctx.fill(); } });
+    S.robots.forEach((r, i) => robotGlyph(ctx, x(r.x), y(r.y), TK[RC[i]], null, RN[i]));
+    const pct = 100 * (1 - S.nUnk / TN); $('a2fill').style.width = pct.toFixed(1) + '%'; $('a2pct').textContent = pct.toFixed(1) + '% known';
+    $('a2clock').textContent = fmtT(S.t);
+    const cov = S.board.filter(B => B.st === 2).length;
+    $('a2state').innerHTML = S.robots.map((r, i) => `<div class="row"><span class="who" style="color:var(--${RC[i]})">${RN[i]}</span><span>${ST[r.st]}</span><span class="chip">${r.reached} reached</span><span class="chip">${r.fails} failed</span></div>`).join('') +
+      `<div class="row"><span class="who">Board</span><span>${cov} of 24 squares done</span></div>` +
+      `<div class="row"><span class="who">Finished</span><span>${S.finished ? 'at ' + Math.round(S.finT) + ' s (90% known)' : 'not yet'}</span></div>`;
+  }
+  function frame(ts){ if (!playing) return; const dt = Math.min(0.1, (ts - last) / 1000); last = ts; acc += dt * +$('a2speed').value;
+    let n = 0; while (acc >= DT && n < 40){ toyStep(S); acc -= DT; n++; }
+    draw(); if (S.robots.every(r => r.st === 'DONE') || S.t > 3000){ playing = false; btn(); return; } requestAnimationFrame(frame); }
+  function btn(){ $('a2play').textContent = playing ? 'Pause' : (S.robots.every(r => r.st === 'DONE') ? 'Replay' : 'Play'); }
+  function play(){ if (S.robots.every(r => r.st === 'DONE')) S = newToy(); playing = true; last = performance.now(); btn(); requestAnimationFrame(frame); }
+  $('a2play').onclick = () => { if (playing){ playing = false; btn(); } else play(); };
+  $('a2reset').onclick = () => { S = newToy(); acc = 0; draw(); if (!playing) btn(); };
+  redraws.push(draw); draw(); btn();
+  if (!RM && 'IntersectionObserver' in window) new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && !started){ started = true; play(); } }), {threshold: 0.3}).observe(cv);
+})();
+
+/* =====================================================================
+   PART B
+   ===================================================================== */
+// ----- B1: radio -----
+(function(){
+  const T = 80, TRR = 1.2;
+  const p1 = [12, 15];
+  const p2 = t => t < 20 ? [42, 28 - 0.6 * t] : t < 60 ? [42, 16] : [42, Math.max(1.5, 16 - 0.7 * (t - 60))];
+  const segD = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx*dx + dy*dy; const u = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2)); return hyp(a[0] + u*dx - p[0], a[1] + u*dy - p[1]); };
+  const btr = []; for (const y of [2.4, 4.6, 6.8, 9, 11.2, 13.4, 17.6, 19.8, 22, 24.2, 26.4, 28.6]) btr.push([30, y]);
+  { const r = rng(7); let n = 0; while (n++ < 3000 && btr.length < 40){ const x = 2 + r() * 56, y = 1.5 + r() * 27;
+      if (hyp(x - p1[0], y - p1[1]) < 4 || Math.abs(x - 30) < 3.5 || Math.abs(x - 42) < 3.5) continue;
+      if (btr.some(b => hyp(b[0] - x, b[1] - y) < 4.2)) continue;
+      let bad = false; for (let t = 14; t <= 66 && !bad; t += 0.5) if (segD([x, y], p1, p2(t)) < 2.4) bad = true;
+      if (!bad) btr.push([x, y]); } }
+  const blockedAt = t => btr.some(b => segD(b, p1, p2(t)) < TRR);
+  let L0 = null, L1 = null; for (let t = 0; t <= T; t += 0.05){ const b = blockedAt(t); if (L0 === null && !b) L0 = t; else if (L0 !== null && L1 === null && b) L1 = t; }
+  const Lup = [L0, L1 === null ? T + 1 : L1];
+  const linkUp = t => t >= Lup[0] && t < Lup[1];
+  // hearing logic, beacons at 1 Hz (R1 at integer s, R2 at +0.5 s)
+  function state(t){
+    const s = {r1hears: null, r2hears: null, r1contact: null, r2contact: null, r1last: null, r2last: null};
+    let r1HeardBy2 = -1, r2HeardBy1 = -1, r1names = false, r2names = false, r1c = false, r2c = false, r1cT = null, r2cT = null;
+    for (let k = 0; k <= T * 2; k++){ const tb = k / 2; if (tb > t) break;
+      if (k % 2 === 0){ if (linkUp(tb)){ r1HeardBy2 = tb; if (r2HeardBy1 >= 0 && tb - r2HeardBy1 <= 10){ r1names = true; } } }
+      else { if (linkUp(tb)){ r2HeardBy1 = tb; } }
+      const r2names_now = r1HeardBy2 >= 0 && tb - r1HeardBy2 <= 10;
+      const r1names_now = r2HeardBy1 >= 0 && tb - r2HeardBy1 <= 10;
+      if (k % 2 === 1 && linkUp(tb)) r2names = r2names_now;
+      if (k % 2 === 0 && linkUp(tb)) r1names = r1names_now;
+    }
+    const pres1 = r2HeardBy1 >= 0 && t - r2HeardBy1 <= 10, pres2 = r1HeardBy2 >= 0 && t - r1HeardBy2 <= 10;
+    s.r1hears = pres1; s.r2hears = pres2; s.r1last = r2HeardBy1; s.r2last = r1HeardBy2;
+    s.r1named = pres1 && r2names; s.r2named = pres2 && r1names;
+    s.r1contact = s.r1hears && s.r1named; s.r2contact = s.r2hears && s.r2named;
+    return s; }
+  // contact start times, exchange progress
+  let c1 = null, c2 = null; for (let t = 0; t <= T; t += 0.5){ const s = state(t); if (c1 === null && s.r1contact) c1 = t; if (c2 === null && s.r2contact) c2 = t; }
+  const cStart = Math.max(c1, c2), seqR1 = 1310, seqR2 = 1840, rate = 52; // updates per s
+  const fb = Math.ceil(Lup[0] * 2) / 2, snd = (fb * 2) % 2 === 0 ? 'R1' : 'R2', hr = snd === 'R1' ? 'R2' : 'R1';
+  const done12 = cStart + seqR1 / rate, done21 = cStart + seqR2 / rate, exDone = Math.max(done12, done21);
+  const prog = (t, d) => t < cStart ? 0 : Math.min(1, (t - cStart) / (d - cStart));
+  const events = [
+    {t: 0, text: 'Trunks block the radio. Each robot sends a beacon every second, and none gets through.'},
+    {t: Lup[0], text: 'R2 moves into the clear. Beacons start to arrive.'},
+    {t: cStart, text: 'Each robot hears the other, and knows it is heard back. They are in contact and start swapping maps.'},
+    {t: exDone, text: 'Each robot now has everything the other had. Both plan on the same merged map.'},
+    {t: Lup[1], text: 'R2 drives behind trunks and the link drops. After 10 s of silence, each counts the other as out of contact.'}
+  ];
+  // mini maps: own explored region per robot, reveal time order
+  const own = [new Float32Array(10000).fill(Infinity), new Float32Array(10000).fill(Infinity)];
+  const paths = [[[-42,-42],[-40,-20],[-30,-5],[-38,15],[-25,30],[-12,22],[-18,5],[-8,-12],[-20,-30]], [[-38,-42],[-10,-40],[10,-30],[30,-38],[40,-20],[28,-5],[38,12],[24,25],[38,38],[12,40]]];
+  paths.forEach((P, i) => { let tt = 0; for (let k = 1; k < P.length; k++){ const a = P[k-1], b = P[k], L = hyp(b[0]-a[0], b[1]-a[1]); for (let s = 0; s <= L; s += 2){ tt++; const px = a[0] + (b[0]-a[0])*s/L, py = a[1] + (b[1]-a[1])*s/L;
+      for (let j = Math.max(0, Math.floor(py + 50 - 9)); j <= Math.min(99, Math.floor(py + 50 + 9)); j++) for (let q = Math.max(0, Math.floor(px + 50 - 9)); q <= Math.min(99, Math.floor(px + 50 + 9)); q++){ if (hyp(q - 50 + .5 - px, j - 50 + .5 - py) <= 9){ const c = j*100 + q; if (own[i][c] > tt) own[i][c] = tt; } } } } });
+  const order = own.map(o => { const idx = []; for (let c = 0; c < 10000; c++) if (isFinite(o[c])) idx.push(c); idx.sort((a, b) => o[a] - o[b]); return idx; });
+  const mcv = [document.createElement('canvas'), document.createElement('canvas')]; mcv.forEach(c => { c.width = c.height = 100; });
+  function drawMini(cv, i, p){
+    const {ctx, w, h} = setup(cv); const o = 1 - i, oc = mcv[i].getContext('2d'), img = oc.createImageData(100, 100), d = img.data;
+    const U = mix([TK.unseen]), S = mix([TK.surface]), mine = mix([TK.surface, rgba(i ? 'r1' : 'r0', 0.35)]), theirs = mix([TK.surface, rgba(o ? 'r1' : 'r0', 0.35)]);
+    for (let c = 0; c < 10000; c++){ const q = ((99 - (c / 100 | 0)) * 100 + c % 100) * 4; d[q] = U[0]; d[q+1] = U[1]; d[q+2] = U[2]; d[q+3] = 255; }
+    const nrecv = Math.floor(p * order[o].length);
+    for (let k = 0; k < nrecv; k++){ const c = order[o][k], q = ((99 - (c / 100 | 0)) * 100 + c % 100) * 4; d[q] = theirs[0]; d[q+1] = theirs[1]; d[q+2] = theirs[2]; }
+    for (const c of order[i]){ const q = ((99 - (c / 100 | 0)) * 100 + c % 100) * 4; d[q] = mine[0]; d[q+1] = mine[1]; d[q+2] = mine[2]; }
+    oc.putImageData(img, 0, 0); ctx.clearRect(0, 0, w, h); ctx.imageSmoothingEnabled = true; ctx.drawImage(mcv[i], 0, 0, w, h); }
+  player({play: $('b1play'), scrub: $('b1scrub'), clock: $('b1clock'), log: $('b1log'), events, dur: T, speed: 2.5, observe: $('b1c'), rest: 40,
+    draw(t){
+      const {ctx, w, h} = setup($('b1c')), s = w / 60, X = x => x * s, Y = y => h - y * s;
+      ctx.clearRect(0, 0, w, h);
+      btr.forEach(b => { ctx.beginPath(); ctx.arc(X(b[0]), Y(b[1]), TRR * s, 0, 7); ctx.fillStyle = TK.tree; ctx.fill(); });
+      const q = p2(t), up = linkUp(t);
+      ctx.beginPath(); ctx.moveTo(X(p1[0]), Y(p1[1])); ctx.lineTo(X(q[0]), Y(q[1])); ctx.strokeStyle = up ? TK.link : rgba('muted', 0.5); ctx.lineWidth = up ? 2.5 : 1.5; ctx.setLineDash(up ? [] : [4, 4]); ctx.stroke(); ctx.setLineDash([]);
+      if (!up) label(ctx, 'blocked by trunks', (X(p1[0]) + X(q[0])) / 2, (Y(p1[1]) + Y(q[1])) / 2 - 12, {size: 10, color: TK.muted, align: 'center'});
+      [[p1, 0, 'r0'], [q, 0.5, 'r1']].forEach(([p, ph, col]) => { const k = Math.floor(t - ph), age = t - ph - k; if (k >= 0 && age < 0.8){ const rr = (3 + age * 16) * s; ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), rr, 0, 7); ctx.strokeStyle = rgba(col, 0.6 * (1 - age / 0.8)); ctx.lineWidth = 2; ctx.stroke(); } });
+      const st = state(t);
+      robotGlyph(ctx, X(p1[0]), Y(p1[1]), TK.r0, st.r1contact ? TK.link : null, 'R1', 7);
+      robotGlyph(ctx, X(q[0]), Y(q[1]), TK.r1, st.r2contact ? TK.link : null, 'R2', 7);
+      const any = st.r1hears || st.r2hears, both = st.r1contact && st.r2contact;
+      let msg, cls = '';
+      if (!up && any){ const left = Math.max(0, Math.ceil(10 - (t - Math.max(st.r1last, st.r2last)))); msg = `Link lost. Each counts the other as out of contact after 10 s of silence (${left} s left).`; cls = 'nok'; }
+      else if (both){ msg = t < exDone ? 'In contact: swapping maps' : 'In contact: maps swapped'; cls = 'ok'; }
+      else if (any) msg = 'Beacons arriving, contact not confirmed yet';
+      else { msg = 'Out of contact: trunks block the radio'; cls = 'nok'; }
+      $('b1st').innerHTML = `<div class="row"><span class="who">Status</span><span class="${cls}">${msg}</span></div>`;
+      const a = prog(t, done12), b = prog(t, done21);
+      $('b1ex').innerHTML = `<span class="k">Map swap${t >= exDone ? ': <span class="ok">done</span>' : ''}</span>` +
+        `<div class="xbar"><span>R1 → R2</span><div class="track"><div class="fill" style="width:${a*100}%;background:var(--r0)"></div></div><span class="num">${Math.round(a*100)}%</span></div>` +
+        `<div class="xbar"><span>R2 → R1</span><div class="track"><div class="fill" style="width:${b*100}%;background:var(--r1)"></div></div><span class="num">${Math.round(b*100)}%</span></div>`;
+      drawMini($('b1m0'), 0, b); drawMini($('b1m1'), 1, a);
+    }});
+})();
+
+/* =====================================================================
+   PART C — arm scenes (per-second script following v1 rules)
+   ===================================================================== */
+const LINK = 18, ASP = 0.44;
+const d2 = (a, b) => hyp(a[0] - b[0], a[1] - b[1]);
+const forest = []; { const r = rng(11); while (forest.length < 300){ const x = -49 + r() * 98, y = -49 + r() * 98; if (forest.some(f => hyp(f[0]-x, f[1]-y) < 3.6)) continue; forest.push([x, y]); } }
+function armSim(cfg){
+  const N = cfg.robots.length, R = [], frames = [], ev = [];
+  const log = (t, text) => ev.push({t, text});
+  for (let i = 0; i < N; i++) R.push({i, pos: cfg.robots[i].start.slice(), act: 'hold', route: [], phase: -1, book: null, chase: null, heard: new Array(N).fill(0), beacon: new Array(N).fill(null), cool: -1e9, gateT: -1e9, gate: null, nNo: 0, missed: 0, stuck: false, ep: null, blockedLogged: null});
+  const ex = []; for (let i = 0; i < N; i++){ ex.push([]); for (let j = 0; j < N; j++) ex[i].push({on: false, start: 0, done: false}); }
+  let plan = null, lastAll = 0, everAll = false;
+  const nm = i => 'R' + (i + 1);
+  function nextPhase(r){ r.phase++; const ph = cfg.robots[r.i].phases[r.phase] || []; r.route = ph.map(p => ({p})); r.act = 'explore'; r.stuck = false; }
+  const spotOf = (center, i) => [center[0] + 3 * Math.cos(2 * Math.PI * i / N), center[1] + 3 * Math.sin(2 * Math.PI * i / N)];
+  function tourOf(j, t){ const f = cfg.robots[j].broadcast; const b = f && f(t, R[j]); return b || R[j].route.filter(s => s.p).map(s => s.p.slice()); }
+  function intercept(from, b, t0){ const pts = [b.pos, ...b.tour];
+    const pred = tau => { let s = Math.max(0, tau - b.t) * ASP; for (let k = 1; k < pts.length; k++){ const L = d2(pts[k-1], pts[k]); if (s <= L) return [pts[k-1][0] + (pts[k][0] - pts[k-1][0]) * s / L, pts[k-1][1] + (pts[k][1] - pts[k-1][1]) * s / L]; s -= L; } return pts[pts.length - 1].slice(); };
+    for (let tau = t0; tau <= t0 + 600; tau++){ const p = pred(tau); if (d2(from, p) / ASP <= tau - t0) return p; } return pred(t0 + 600); }
+  for (let t = 0; t <= cfg.T; t++){
+    // links
+    const L = []; for (let i = 0; i < N; i++){ L.push([]); for (let j = 0; j < N; j++) L[i].push(i !== j && d2(R[i].pos, R[j].pos) < LINK); }
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (L[i][j]){ R[i].heard[j] = t; R[i].beacon[j] = {pos: R[j].pos.slice(), goal: (R[j].route.find(s => s.p) || {p: R[j].pos}).p.slice(), tour: tourOf(j, t), t}; }
+    let all = true; for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) if (!L[i][j]) all = false;
+    if (all){ lastAll = t; everAll = true; }
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++){ const e = ex[i][j]; if (L[i][j]){ if (!e.on){ e.on = true; e.start = t; e.done = false; } if (!e.done && t - e.start >= cfg.exSec) e.done = true; } else e.on = false; }
+    if (cfg.book && !plan && all && t >= 5){ plan = {v: 1, cell: cfg.cells[0], t0: t + 300, renewed: -1}; log(t, `Everyone is in contact, so R1 picks the first meeting: square (${plan.cell[0]}, ${plan.cell[1]}) at ${plan.t0} s. Meetings then repeat every 300 s.`); }
+    if (t === 60) R.forEach(r => nextPhase(r));
+    // booking
+    if (cfg.book && plan && t > 60) for (const r of R){
+      if (!r.book && t - lastAll >= 15){
+        let k = Math.max(0, Math.ceil((t - plan.t0) / 300));
+        for (let tries = 0; tries < 20; tries++, k++){ const T = plan.t0 + 300 * k; if (T <= t) continue;
+          if (k <= plan.renewed) continue;
+          let ok = T - t >= 3 * d2(r.pos, plan.cell); for (let j = 0; j < N && ok; j++) if (j !== r.i && r.beacon[j]) ok = T - t >= 3 * d2(r.beacon[j].pos, plan.cell);
+          if (!ok) continue;
+          r.book = {k, T, cell: plan.cell.slice(), spot: spotOf(plan.cell, r.i), dep: false, arrived: false, met: new Set(), prog: t, depT: null};
+          break; } }
+      if (r.book && !r.book.dep){ const lead = 3 * d2(r.pos, r.book.cell);
+        if (t + lead >= r.book.T){ r.book.dep = true; r.book.depT = t;
+          if (r.chase){ const early = r.chase.dep0 === null ? 0 : Math.round(r.chase.dep0 - t); log(t, `Time for ${nm(r.i)} to leave for the meeting, so it drops the chase.${early > 5 ? ` That is ${early} s earlier than planned when the chase began: the chase took ${nm(r.i)} farther from the square.` : ''}`); r.chase = null; r.cool = t; }
+          else log(t, `${nm(r.i)} stops exploring to reach the meeting in time (${Math.round(d2(r.pos, r.book.cell))} m away).`);
+          r.act = 'meet'; r.route = (cfg.drive && cfg.drive(r.i, r.book.k, r.book.spot)) || [{p: r.book.spot}]; } }
+    }
+    // chase trigger (explore only)
+    for (const r of R){ if (!cfg.chasers.includes(r.i)) continue;
+      let j = -1; for (let q = 0; q < N; q++) if (q !== r.i && t - r.heard[q] >= 90 && r.heard[q] >= t - 900) { j = q; break; }
+      r.silentPeer = j; if (j < 0) r.ep = null; else if (r.ep === null) r.ep = r.heard[j] + 90;
+      if (r.act !== 'explore' || !everAll || j < 0 || t - r.cool < 90 || t - r.gateT < 10) continue;
+      r.gateT = t;
+      if (r.book){ const tdep = r.book.dep ? t : r.book.T - 3 * d2(r.pos, r.book.cell); if (tdep - t <= 120){ r.gate = {t, blocked: Math.max(0, Math.round(tdep - t))}; if (r.blockedLogged !== r.book.k){ r.blockedLogged = r.book.k; log(t, `${nm(j)} has been silent 90 s, but ${nm(r.i)} leaves for the meeting in ${r.gate.blocked} s, too soon to start a chase.`); } continue; } }
+      const v = cfg.value(r, t); r.gate = {t, ...v};
+      if (!v.yes){ r.nNo++; if (r.nNo === 1 || cfg.logEveryNo) log(t, `${nm(j)} has been silent 90 s. Finding it wouldn't finish the job sooner, so ${nm(r.i)} keeps exploring.`); continue; }
+      const b = r.beacon[j], I = intercept(r.pos, b, t);
+      r.chase = {j, targets: [{p: I, name: 'predicted spot'}, {p: b.goal, name: 'last goal'}, {p: b.pos, name: 'last heard position'}], ti: 0, t0: t, beacon: b, dep0: r.book && !r.book.dep ? r.book.T - 3 * d2(r.pos, r.book.cell) : null};
+      r.act = 'chase'; r.route = [{p: I}];
+      log(t, `Now finding ${nm(j)} pays off. ${nm(r.i)} drives to where ${nm(j)} should be by now.`); }
+    // chase progress
+    for (const r of R){ if (!r.chase) continue; const j = r.chase.j;
+      if (L[r.i][j]){ if (r.act === 'chase'){ r.act = 'follow'; log(t, `${nm(r.i)} hears ${nm(j)} and follows it at 10 m while they swap maps.`); }
+        const d = d2(r.pos, R[j].pos), fp = d > 0.1 ? [R[j].pos[0] + (r.pos[0] - R[j].pos[0]) / d * 10, R[j].pos[1] + (r.pos[1] - R[j].pos[1]) / d * 10] : r.pos.slice(); r.route = [{p: fp}];
+        if (ex[r.i][j].done){ log(t, `Maps swapped. ${nm(r.i)} goes back to exploring.`); r.chase = null; r.cool = t; nextPhase(r); } }
+      else if (r.act === 'chase' && !r.route.length){ r.chase.ti++;
+        if (r.chase.ti < r.chase.targets.length){ const tg = r.chase.targets[r.chase.ti]; r.route = [{p: tg.p}]; log(t, `${nm(j)} isn't at the ${r.chase.targets[r.chase.ti - 1].name}. ${nm(r.i)} tries its ${tg.name} next.`); }
+        else { log(t, `${nm(r.i)} found no sign of ${nm(j)} and goes back to exploring.`); r.chase = null; r.cool = t; nextPhase(r); } } }
+    // meetings
+    if (cfg.book && plan){
+      for (const r of R){ const B = r.book; if (!B || !B.dep) continue;
+        if (!B.arrived && d2(r.pos, B.spot) <= 1){ B.arrived = true; B.arrT = t; }
+        for (let j = 0; j < N; j++){ if (j === r.i) continue; if (L[r.i][j] && ex[r.i][j].on && !ex[r.i][j].done) B.prog = t;
+          if (L[r.i][j] && ex[r.i][j].done && !B.met.has(j) && t >= B.T - 300){ B.met.add(j); B.prog = t; } } }
+      const booked = R.filter(r => r.book && r.book.dep);
+      if (booked.length === N && booked.every(r => r.book.k === booked[0].book.k && r.book.met.size === N - 1)){
+        const k = booked[0].book.k; plan.v++; plan.renewed = k; plan.cell = cfg.cells[Math.min(cfg.cells.length - 1, plan.v - 1)];
+        log(t, `Everyone has swapped maps, so the meeting is over. R1 picks the next one: square (${plan.cell[0]}, ${plan.cell[1]}) at ${plan.t0 + 300 * (k + 1)} s.`);
+        booked.forEach(r => { r.book = null; r.missed = 0; nextPhase(r); }); }
+      for (const r of R){ const B = r.book; if (!B || !B.dep) continue;
+        const running = R.some(q => q.i !== r.i && L[r.i][q.i] && ex[r.i][q.i].on && !ex[r.i][q.i].done);
+        if (t >= B.T + 120 && B.met.size < N - 1 && !running){ log(t, `2 minutes past the meeting time, ${nm(r.i)} gives up${B.arrived ? '' : ' while still on its way'}. ${B.met.size ? 'It met ' + [...B.met].map(nm).join(' and ') + ', but not everyone.' : 'It missed the meeting.'}`); if (!B.met.size) r.missed++; r.book = null; nextPhase(r); continue; }
+        if (B.arrived && t >= B.T && t - Math.max(B.prog, B.arrT, B.T) >= 120){ log(t, `${nm(r.i)} has waited 2 minutes with no one new arriving and goes back to exploring.${B.met.size ? ' It met ' + [...B.met].map(nm).join(' and ') + '.' : ''}`); if (!B.met.size) r.missed++; r.book = null; nextPhase(r); } }
+    }
+    // move
+    for (const r of R){ if (r.act === 'hold') continue; let rem = ASP; r.stuck = false;
+      while (rem > 1e-6 && r.route.length){ const s = r.route[0];
+        if (s.wait !== undefined){ s.wait -= 1; r.stuck = !!s.stuck; if (s.wait <= 0) r.route.shift(); rem = 0; break; }
+        const d = d2(r.pos, s.p); if (d <= rem){ r.pos = s.p.slice(); rem -= d; r.route.shift(); if (r.act === 'chase' && !r.route.length) break; } else { r.pos = [r.pos[0] + (s.p[0] - r.pos[0]) / d * rem, r.pos[1] + (s.p[1] - r.pos[1]) / d * rem]; rem = 0; } } }
+    frames.push({pos: R.map(r => r.pos.slice()), act: R.map(r => r.act), L: L.map(a => a.slice()), stuck: R.map(r => r.stuck),
+      plan: plan && {...plan, cell: plan.cell.slice()}, book: R.map(r => r.book && {k: r.book.k, T: r.book.T, cell: r.book.cell, spot: r.book.spot, dep: r.book.dep, arrived: r.book.arrived, met: [...r.book.met], lead: 3 * d2(r.pos, r.book.cell)}),
+      chase: R.map(r => r.chase && {j: r.chase.j, ti: r.chase.ti, targets: r.chase.targets, beacon: r.chase.beacon}), gate: R.map(r => r.gate), nNo: R.map(r => r.nNo), silentPeer: R.map(r => r.silentPeer),
+      heard: R.map(r => r.heard.slice()), beacon: R.map(r => r.beacon.map(b => b && {pos: b.pos, goal: b.goal, tour: b.tour})), cool: R.map(r => r.cool), ex: ex.map(a => a.map(e => e.on ? (e.done ? 1 : Math.min(1, (t - e.start) / cfg.exSec)) : -1)), missed: R.map(r => r.missed), all});
+  }
+  return {frames, ev};
+}
+const ACOL = {hold: 'a-hold', explore: 'a-explore', meet: 'a-trip', chase: 'a-chase', follow: 'a-follow'};
+const ANAME = {hold: 'Starting', explore: 'Explore', meet: 'Meeting', chase: 'Chase', follow: 'Follow'};
+const RCOL = ['r0', 'r1', 'r2'];
+function legendHTML(withMeet, withChase){
+  let s = `<span><i class="sw" style="background:var(--a-explore)"></i>Explore</span>`;
+  if (withMeet) s += `<span><i class="sw" style="background:var(--a-trip)"></i>Meeting trip</span>`;
+  if (withChase) s += `<span><i class="sw" style="background:var(--a-chase)"></i>Chase</span><span><i class="sw" style="background:var(--a-follow)"></i>Follow</span>`;
+  s += `<span><i class="sw-line"></i>In radio range (toy: within ${LINK} m)</span><span><i class="sw-dot" style="border:2px dashed var(--muted)"></i>Last heard position</span>`;
+  return s; }
+function sceneDraw(cv, strip, sim, t, N, extra){
+  const f = sim.frames[Math.min(sim.frames.length - 1, Math.floor(t))], f2 = sim.frames[Math.min(sim.frames.length - 1, Math.floor(t) + 1)], a = t - Math.floor(t);
+  const P = f.pos.map((p, i) => [p[0] + (f2.pos[i][0] - p[0]) * a, p[1] + (f2.pos[i][1] - p[1]) * a]);
+  const {ctx, w, h} = setup(cv), s = w / 100, X = x => (x + 50) * s, Y = y => h - (y + 50) * s;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = rgba('muted', 0.16); ctx.lineWidth = 1; for (let k = 1; k < 10; k++){ ctx.beginPath(); ctx.moveTo(k*10*s, 0); ctx.lineTo(k*10*s, h); ctx.moveTo(0, k*10*s); ctx.lineTo(w, k*10*s); ctx.stroke(); }
+  ctx.fillStyle = TK.tree; forest.forEach(p => { ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), Math.max(1.4, 0.5 * s), 0, 7); ctx.fill(); });
+  if (f.plan){ const c = f.plan.cell; ctx.fillStyle = rgba('a-trip', 0.16); ctx.fillRect(X(c[0] - 5), Y(c[1] + 5), 10*s, 10*s); ctx.strokeStyle = TK['a-trip']; ctx.lineWidth = 2; ctx.strokeRect(X(c[0] - 5), Y(c[1] + 5), 10*s, 10*s);
+    for (let i = 0; i < N; i++){ const sp = [c[0] + 3 * Math.cos(2*Math.PI*i/N), c[1] + 3 * Math.sin(2*Math.PI*i/N)]; ctx.beginPath(); ctx.arc(X(sp[0]), Y(sp[1]), 3, 0, 7); ctx.strokeStyle = TK[RCOL[i]]; ctx.lineWidth = 1.5; ctx.stroke(); }
+    label(ctx, 'meeting square', X(c[0] - 5), Y(c[1] + 5) - 11, {size: 10, color: TK.ink, edge: TK['a-trip']}); }
+  if (extra && extra.under) extra.under(ctx, X, Y, s, f, P);
+  for (let i = 0; i < N; i++){ ctx.beginPath(); const n = Math.floor(t); ctx.moveTo(X(sim.frames[0].pos[i][0]), Y(sim.frames[0].pos[i][1])); for (let k = 2; k <= n; k += 2) ctx.lineTo(X(sim.frames[k].pos[i][0]), Y(sim.frames[k].pos[i][1])); ctx.lineTo(X(P[i][0]), Y(P[i][1])); ctx.strokeStyle = rgba(RCOL[i], 0.5); ctx.lineWidth = 1.6; ctx.stroke(); }
+  for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) if (f.L[i][j]){ ctx.beginPath(); ctx.moveTo(X(P[i][0]), Y(P[i][1])); ctx.lineTo(X(P[j][0]), Y(P[j][1])); ctx.strokeStyle = TK.link; ctx.lineWidth = 2.2; ctx.stroke(); }
+  if (extra && extra.over) extra.over(ctx, X, Y, s, f, P);
+  for (let i = 0; i < N; i++){ robotGlyph(ctx, X(P[i][0]), Y(P[i][1]), TK[RCOL[i]], TK[ACOL[f.act[i]]], 'R' + (i + 1)); if (f.stuck[i]) label(ctx, 'stuck', X(P[i][0]) + 10, Y(P[i][1]) + 14, {size: 10, color: TK.bad}); }
+  // activity strip
+  const W = strip.clientWidth; strip.style.height = (N * 16 + 22) + 'px';
+  const st = setup(strip), c2 = st.ctx, T = sim.frames.length - 1, sx = v => 34 + (W - 40) * v / T;
+  c2.clearRect(0, 0, st.w, st.h);
+  for (let i = 0; i < N; i++){ const y0 = 4 + i * 16; c2.fillStyle = TK[RCOL[i]]; c2.font = `600 11px ${MONO}`; c2.textBaseline = 'middle'; c2.fillText('R' + (i + 1), 2, y0 + 6);
+    let k0 = 0; for (let k = 1; k <= T + 1; k++){ if (k > T || sim.frames[k].act[i] !== sim.frames[k0].act[i]){ c2.fillStyle = TK[ACOL[sim.frames[k0].act[i]]]; c2.fillRect(sx(k0), y0, Math.max(1, sx(k) - sx(k0)), 12); k0 = k; } } }
+  c2.fillStyle = TK.muted; c2.font = `10px ${MONO}`;
+  for (let v = 0; v <= T; v += 100){ c2.fillRect(sx(v), N * 16 + 4, 1, 4); c2.fillText(v + ' s', sx(v) + 2, N * 16 + 14); }
+  if (extra && extra.marks) extra.marks.forEach(m => { c2.fillStyle = TK['a-trip']; c2.fillRect(sx(m) - 1, 0, 2, N * 16 + 4); });
+  c2.fillStyle = TK.ink; c2.fillRect(sx(t) - 1, 0, 2, N * 16 + 8);
+  return f; }
+function chaseOverlay(ri){ return {over(ctx, X, Y, s, f, P){
+  const c = f.chase[ri], j = c ? c.j : 1 - ri;
+  const b = c ? c.beacon : f.beacon[ri][j]; if (!b) return;
+  if (!c && f.L[ri][j]) return;
+  const pc = TK[RCOL[j]];
+  ctx.beginPath(); ctx.moveTo(X(b.pos[0]), Y(b.pos[1])); b.tour.forEach(p => ctx.lineTo(X(p[0]), Y(p[1]))); ctx.setLineDash([2, 4]); ctx.strokeStyle = rgba(RCOL[j], 0.7); ctx.lineWidth = 1.5; ctx.stroke(); ctx.setLineDash([]);
+  ghost(ctx, X(b.pos[0]), Y(b.pos[1]), pc); label(ctx, `${'R' + (j + 1)} last heard`, X(b.pos[0]) + 9, Y(b.pos[1]) + 12, {size: 10, color: pc});
+  if (c){ c.targets.forEach((tg, k) => { if (k === 2) return; const px = X(tg.p[0]), py = Y(tg.p[1]); ctx.beginPath(); if (k === 0){ ctx.moveTo(px, py - 7); ctx.lineTo(px + 7, py); ctx.lineTo(px, py + 7); ctx.lineTo(px - 7, py); ctx.closePath(); } else { ctx.rect(px - 5, py - 5, 10, 10); }
+      ctx.fillStyle = k === c.ti ? TK['a-chase'] : rgba('a-chase', 0.35); ctx.fill(); label(ctx, tg.name, px + 10, py - 10, {size: 10, color: TK['a-chase']}); });
+    if (f.act[ri] === 'chase'){ const tg = c.targets[Math.min(c.ti, 2)].p; ctx.beginPath(); ctx.moveTo(X(P[ri][0]), Y(P[ri][1])); ctx.lineTo(X(tg[0]), Y(tg[1])); ctx.setLineDash([6, 4]); ctx.strokeStyle = TK['a-chase']; ctx.lineWidth = 1.8; ctx.stroke(); ctx.setLineDash([]); }
+    if (f.act[ri] === 'follow'){ ctx.beginPath(); ctx.arc(X(P[j][0]), Y(P[j][1]), 10 * s, 0, 7); ctx.setLineDash([5, 4]); ctx.strokeStyle = TK['a-follow']; ctx.lineWidth = 1.6; ctx.stroke(); ctx.setLineDash([]); } } }}; }
+const actRow = (f, i, txt) => `<div class="row"><span class="who" style="color:var(--${RCOL[i]})">R${i + 1}</span><span class="chip" style="background:var(--${ACOL[f.act[i]]})">${ANAME[f.act[i]]}</span>${txt ? `<span>${txt}</span>` : ''}</div>`;
+function bookTxt(f, i, t){ const b = f.book[i];
+  if (f.act[i] === 'hold') return 'waiting for the start';
+  if (!b) return '';
+  if (!b.dep) return `leaves for the meeting in ${Math.max(0, Math.round(b.T - t - b.lead))} s`;
+  if (!b.arrived) return 'on the way to the meeting';
+  return 'at the meeting' + (b.met.length ? ', has met ' + b.met.map(j => 'R' + (j + 1)).join(' and ') : ''); }
+function nextMeet(f, t){ const p = f.plan;
+  if (!p) return '<div class="row"><span class="who">Meeting</span><span>none yet: R1 picks one once everyone is in contact</span></div>';
+  const k = Math.max(p.renewed + 1, Math.floor((t - 120 - p.t0) / 300) + 1);
+  return `<div class="row"><span class="who">Meeting</span><span>square (${p.cell[0]}, ${p.cell[1]}) at ${p.t0 + 300 * k} s</span></div>`; }
+
+// ----- pursuit -----
+(function(){
+  const cfg = {T: 640, exSec: 40, chasers: [0], book: false,
+    robots: [
+      {start: [-42, -42], phases: [[[-34,-30],[-38,-14],[-28,-2],[-36,12],[-24,22],[-14,14],[-6,28],[-16,40],[-2,44],[10,40]], [[30,16],[44,30],[32,44],[16,46],[4,36]]]},
+      {start: [-38, -42], phases: [[[-28,-36],[-14,-38],[-4,-28],[10,-36],[26,-28],[40,-36],[42,-18],[44,-2],[32,-12],[36,4],[22,6],[24,-8],[38,-20],[30,-38],[12,-44],[0,-30],[-10,-16]]],
+       broadcast: (t, r) => (t >= 95 && t <= 110) ? [[-14,-38],[-5,-25],[5,-12],[8,4],[12,20],[20,32]] : null}],
+    value(r, t){ const D = t - r.ep, no = 1180 - 0.4 * D, re = 1320 - 1.5 * D; return {yes: re < no, no: Math.round(no), re: Math.round(re)}; }};
+  const sim = armSim(cfg);
+  $('cpleg').innerHTML = legendHTML(false, true);
+  player({play: $('cpplay'), scrub: $('cpscrub'), clock: $('cpclock'), log: $('cplog'), events: sim.ev, dur: cfg.T, speed: 22, observe: $('cpc'), rest: 470,
+    draw(t){ const f = sceneDraw($('cpc'), $('cpt'), sim, t, 2, chaseOverlay(0));
+      const silent = Math.floor(t - f.heard[0][1]), c = f.chase[0];
+      let r1 = f.act[0] === 'hold' ? 'waiting for the start' : '';
+      if (c && f.act[0] === 'chase') r1 = `looking for R2 at its ${c.targets[c.ti].name}`;
+      if (f.act[0] === 'follow') r1 = `following R2, maps ${Math.round(Math.max(0, f.ex[0][1]) * 100)}% swapped`;
+      $('cpstate').innerHTML = actRow(f, 0, r1) + actRow(f, 1, f.act[1] === 'hold' ? 'waiting for the start' : '') +
+        `<div class="row"><span class="who">R2 silent</span><span>${f.L[0][1] ? 'no, in range' : silent + ' s'}</span></div>` +
+        `<div class="row"><span class="who">Not worth it</span><span>${f.nNo[0]} time${f.nNo[0] === 1 ? '' : 's'} so far</span></div>`; }});
+})();
+
+// ----- rendezvous -----
+(function(){
+  const cfg = {T: 780, exSec: 12, chasers: [], book: true, cells: [[-15, 5], [15, 15], [15, 15]],
+    robots: [
+      {start: [-42, -42], phases: [[[-36,-26],[-44,-8],[-34,6],[-40,22],[-30,34],[-18,42],[-6,36],[-14,24]], [[-26,20],[-36,40],[-20,46],[-4,40],[4,30],[0,20]], [[2,30],[-10,40],[-26,44]]]},
+      {start: [-38, -42], phases: [[[-24,-36],[-8,-42],[6,-34],[16,-44],[28,-34],[20,-20],[34,-12]], [[-2,-12],[14,-24],[30,-14],[44,-26],[40,-42],[24,-46]], [[30,-4],[42,-12],[44,-30]]]},
+      {start: [-40, -38], phases: [[[-30,-26],[-18,-14],[-4,-20],[8,-6],[2,10],[14,18],[4,30]], [[-4,16],[8,32],[24,40],[38,44],[44,32]], [[44,14],[46,-4],[36,-18]]]}],
+    drive(i, k, spot){ if (i === 2 && k === 1) return [{p: [42, 24]}, {wait: 30, stuck: true}, {p: [44, 27]}, {p: [40, 30]}, {wait: 30, stuck: true}, {p: [43, 33]}, {p: [38, 26]}, {wait: 70, stuck: true}, {p: [41, 28]}, {p: [36, 22]}, {p: spot}]; return null; }};
+  const sim = armSim(cfg);
+  $('crleg').innerHTML = legendHTML(true, false) + '<span><i class="sw" style="background:var(--a-trip)"></i>Meeting square</span>';
+  const marks = []; for (let k = 0; k < 3; k++){ const p = sim.frames.find(f => f.plan); if (p) marks.push(p.plan.t0 + 300 * k); }
+  player({play: $('crplay'), scrub: $('crscrub'), clock: $('crclock'), log: $('crlog'), events: sim.ev, dur: cfg.T, speed: 22, observe: $('crc'), rest: 600,
+    draw(t){ const f = sceneDraw($('crc'), $('crt'), sim, t, 3, {marks, over(ctx, X, Y, s, f, P){ f.book.forEach((b, i) => { if (b && b.dep && f.act[i] === 'meet'){ ctx.beginPath(); ctx.moveTo(X(P[i][0]), Y(P[i][1])); ctx.lineTo(X(b.spot[0]), Y(b.spot[1])); ctx.setLineDash([3, 4]); ctx.strokeStyle = rgba(RCOL[i], 0.8); ctx.lineWidth = 1.4; ctx.stroke(); ctx.setLineDash([]); } }); }});
+      $('crstate').innerHTML = nextMeet(f, t) + [0, 1, 2].map(i => actRow(f, i, bookTxt(f, i, t))).join(''); }});
+})();
+
+// ----- hybrid -----
+(function(){
+  const cfg = {T: 580, exSec: 12, chasers: [0], book: true, cells: [[-5, -5], [-20, 25], [-25, 35]],
+    robots: [
+      {start: [-42, -42], phases: [[[-34,-26],[-40,-8],[-28,4],[-30,20],[-40,34]], [[-10,8],[2,22],[8,36],[20,44],[30,40]], [[-20,20],[-36,30]]]},
+      {start: [-38, -42], phases: [[[-24,-38],[-6,-44],[10,-38],[24,-44],[36,-32]], [[12,-18],[30,-10],[44,-6],[40,-24],[44,-40]], [[10,4],[24,-6]]],
+       broadcast: (t, r) => (r.phase === 1) ? [[12,-18],[30,-10],[40,12],[40,36]] : null}],
+    value(){ return {yes: true}; }};
+  const sim = armSim(cfg);
+  $('chleg').innerHTML = legendHTML(true, true);
+  const p0 = sim.frames.find(f => f.plan), marks = p0 ? [p0.plan.t0, p0.plan.t0 + 300] : [];
+  player({play: $('chplay'), scrub: $('chscrub'), clock: $('chclock'), log: $('chlog'), events: sim.ev, dur: cfg.T, speed: 22, observe: $('chc'), rest: 470,
+    draw(t){ const f = sceneDraw($('chc'), $('cht'), sim, t, 2, Object.assign(chaseOverlay(0), {marks}));
+      const b = f.book[0], c = f.chase[0], tdep = b && !b.dep ? b.T - b.lead : null, inS = v => Math.max(0, Math.round(v - t));
+      let may = 'yes, once R2 has been silent for 90 s';
+      if (c) may = 'already chasing';
+      else if (b && b.dep) may = 'no: it is on the way to the meeting';
+      else if (tdep !== null && tdep - t <= 120) may = `no: it leaves for the meeting in ${inS(tdep)} s`;
+      else if (t - f.cool[0] < 90) may = `not for ${90 - Math.floor(t - f.cool[0])} s: a new chase waits 90 s after the last one`;
+      let r1 = bookTxt(f, 0, t);
+      if (c && f.act[0] === 'chase') r1 = `looking for R2 at its ${c.targets[c.ti].name}` + (tdep !== null ? `, leaves for the meeting in ${inS(tdep)} s` : '');
+      if (f.act[0] === 'follow') r1 = 'following R2 while they swap maps';
+      $('chstate').innerHTML = nextMeet(f, t) + actRow(f, 0, r1) + actRow(f, 1, bookTxt(f, 1, t)) +
+        `<div class="row"><span class="who">Can R1 chase?</span><span>${may}</span></div>`; }});
+})();
+
+})();
+</script>
+
+</body>
+</html>
