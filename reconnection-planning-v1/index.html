@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="Animated walkthrough of how the gen-40 multi-robot exploration planner picks goals, shares maps, and how its four reconnection arms (off, pursuit, rendezvous, hybrid) work.">
-<title>Gen-40 Planner Walkthrough</title>
+<meta name="description" content="Animated walkthrough of Reconnection Planning v1: how the multi-robot exploration planner picks goals, shares maps, and how its four reconnection arms (off, pursuit, rendezvous, hybrid) work.">
+<title>Reconnection Planning v1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
@@ -195,8 +195,8 @@ a{color:var(--accent)}
 
 <div class="wrap">
 <header class="top">
-  <p class="eyebrow">Gen 40 · explo planner build 36397ac · ladder g40lad</p>
-  <h1>How the gen-40 planner explores, and how each arm reconnects</h1>
+  <p class="eyebrow">Reconnection Planning v1 · build 36397ac · ladder g40lad</p>
+  <h1>Reconnection Planning v1: how it explores, and how each arm reconnects</h1>
   <p class="lede">Part A shows how one robot picks where to go next. That part is the same in all four arms. Part B covers what every arm shares: the beacon, the map exchange, and the list that decides what a robot does next. Part C turns on the two extra behaviours one arm at a time. The scenes are small toys. Results measured in the runs are kept separate, in Part D.</p>
   <nav class="toc" aria-label="Sections">
     <a href="#explore"><b>A</b>How a robot explores</a>
@@ -362,7 +362,7 @@ a{color:var(--accent)}
   </div>
 
   <article class="stage" id="cp">
-    <div class="stage-head"><span class="tag">Scripted toy · gen-40 rules</span><h3>pursuit: go and find a teammate when it pays</h3>
+    <div class="stage-head"><span class="tag">Scripted toy · v1 rules</span><h3>pursuit: go and find a teammate when it pays</h3>
       <p>R1 loses R2 and keeps exploring. Once R2 has been silent for 90 s, R1 runs a value check every 10 s. When chasing finally pays, R1 drives to where it predicts R2 will be, then to R2's last goal. When it hears R2, it follows at 10 m until the maps are swapped. Only R1's checks are shown. R2 runs the same rules, and in this toy its value check keeps saying no.</p></div>
     <div class="stage-body">
       <div class="viz">
@@ -391,7 +391,7 @@ a{color:var(--accent)}
   </article>
 
   <article class="stage" id="cr">
-    <div class="stage-head"><span class="tag">Scripted toy · gen-40 rules</span><h3>rendezvous: agree a time and place, then keep it</h3>
+    <div class="stage-head"><span class="tag">Scripted toy · v1 rules</span><h3>rendezvous: agree a time and place, then keep it</h3>
       <p>While the robots are still together at the start, robot 0 (R1) proposes a meeting square, with meetings every 300 s. Each robot books the next meeting everyone can reach. Each works out when to set off from a straight-line estimate, and drives to its own spot on a 3 m ring. The meeting counts once every pair has swapped maps; R1 then picks a fresh square. In the second meeting R3 gets stuck and misses it.</p></div>
     <div class="stage-body">
       <div class="viz">
@@ -418,7 +418,7 @@ a{color:var(--accent)}
   </article>
 
   <article class="stage" id="ch">
-    <div class="stage-head"><span class="tag">Scripted toy · gen-40 rules</span><h3>hybrid: both, and the meeting comes first</h3>
+    <div class="stage-head"><span class="tag">Scripted toy · v1 rules</span><h3>hybrid: both, and the meeting comes first</h3>
       <p>Both switches are on. A chase may start only if no booking has set off and the next departure is more than 120 s away. Meet sits above Chase on the list, so once the departure time comes, the meeting takes over. Chasing away from the meeting square makes the trip back longer, which brings the departure time forward.</p></div>
     <div class="stage-body">
       <div class="viz">
@@ -1070,7 +1070,7 @@ function trailLine(ctx, tr, X, Y, color, a){ if (tr.length < 2) return; ctx.begi
 })();
 
 /* =====================================================================
-   PART C — arm scenes (per-second script following gen-40 rules)
+   PART C — arm scenes (per-second script following v1 rules)
    ===================================================================== */
 const LINK = 18, ASP = 0.44;
 const d2 = (a, b) => hyp(a[0] - b[0], a[1] - b[1]);
