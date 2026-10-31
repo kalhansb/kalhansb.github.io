@@ -1,0 +1,2035 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Animated walkthrough of Reconnection Planning V2: how a robot sweeps a 20 m cell along a route of viewpoints, how the R, A, PH and PC arms share out the cells, how robots swap maps, what the runs measured, and the numbers behind every rule.">
+<title>Reconnection Planning V2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Noto+Sans:wght@400;600;700&family=Noto+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F1F4EF; --surface:#FFFFFF; --surface-2:#F6F8F4; --ink:#1B231F; --muted:#56635B; --line:#D3DBD4;
+  --accent:#2D6A4F; --link:#2C9A5A; --tint:rgba(45,106,79,0.11); --tree:rgba(58,84,66,0.30); --no:#7B8780;
+  --r0:#2A5DB0; --r1:#B8326A; --r2:#0B7F79;
+  --fog:rgba(52,66,57,0.30); --unseen:#A4ADB8; --cov:rgba(44,154,90,0.20); --cov-edge:rgba(45,106,79,0.55);
+  --fr:#7445B8; --fr-soft:rgba(116,69,184,0.20); --bad:#B5452B; --good:#2C8A52;
+  --a-explore:#B7CFBE; --a-trip:#E0A22A; --a-hold:#A9B2AC; --a-chase:#D2532A; --a-follow:#E8845D; --a-wait:#8A90A8; --a-home:#58616A;
+  --on-bg:#E3EEE6; --on-ink:#1F5A3E;
+  --display:"Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --body:"Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;display:flex;flex-direction:column;gap:44px}
+h1,h2,h3,h4{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.1}
+h1{font-size:clamp(30px,4.4vw,46px);font-weight:700;letter-spacing:-0.01em}
+h2{font-size:28px;font-weight:600}
+h3{font-size:22px;font-weight:600}
+h4{font-size:18px;font-weight:600}
+p{margin:0}
+ul,ol{margin:0}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:var(--muted)}
+.lede{max-width:68ch;font-size:18px}
+header.top{display:flex;flex-direction:column;gap:14px}
+.toc{display:flex;flex-wrap:wrap;gap:8px}
+.toc a{font-family:var(--display);font-size:16px;font-weight:600;color:var(--ink);text-decoration:none;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:5px 12px}
+.toc a b{color:var(--accent);margin-right:6px}
+.toc a:hover{border-color:var(--accent)}
+.toc a:focus-visible,.btn:focus-visible,.log button:focus-visible,select:focus-visible,input:focus-visible,.dots button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.part{display:flex;flex-direction:column;gap:22px}
+.part-head{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;align-items:baseline;border-top:2px solid var(--ink);padding-top:14px}
+.part-head .letter{font-family:var(--display);font-weight:700;font-size:44px;line-height:0.9;color:var(--accent);grid-row:span 2}
+.part-head p{color:var(--muted);max-width:72ch}
+
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.stage-head{display:flex;flex-direction:column;gap:6px}
+.stage-head p{max-width:76ch}
+.tag{font-family:var(--mono);font-size:11px;letter-spacing:0.05em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px;align-self:flex-start}
+.stage-body{display:grid;grid-template-columns:1fr;gap:18px;align-items:start}
+@media (min-width:940px){.stage-body{grid-template-columns:minmax(0,1.45fr) minmax(290px,1fr)}}
+.viz{display:flex;flex-direction:column;gap:10px;min-width:0}
+canvas.cv{display:block;width:100%;max-width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:6px}
+canvas.strip{display:block;width:100%;height:auto;border-radius:4px}
+.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.btn{font-family:var(--display);font-size:16px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:5px 14px;cursor:pointer;min-width:74px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn:disabled{opacity:0.45;cursor:default}
+input[type=range]{flex:1 1 200px;min-width:0;accent-color:var(--accent)}
+.clock{font-family:var(--mono);font-size:14px;min-width:7ch;font-variant-numeric:tabular-nums;color:var(--ink)}
+select{font-family:var(--mono);font-size:14px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 6px}
+.ctl label{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dots{display:flex;flex-wrap:wrap;gap:4px;list-style:none;padding:0}
+.dots button{font-family:var(--mono);font-size:12px;width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;padding:0}
+.dots button.on{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.side{display:flex;flex-direction:column;gap:12px;min-width:0}
+.side .k{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:0.04em;text-transform:uppercase}
+.side p{font-size:15.5px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:2px;display:inline-block;border:1px solid var(--line)}
+.sw-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.sw-line{width:18px;height:0;border-top:2px solid var(--link);display:inline-block}
+.sw-dash{width:18px;height:0;border-top:2px dashed var(--muted);display:inline-block}
+
+.tbl-wrap{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:6px}
+table.cands{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+table.cands th{position:sticky;top:0;background:var(--surface-2);font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:0.03em;text-transform:uppercase;color:var(--muted);text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)}
+table.cands td{padding:4px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+table.cands th:first-child,table.cands td:first-child{text-align:left}
+table.cands td.v-goal{color:var(--good);font-weight:600}
+table.cands td.v-skip{color:var(--bad)}
+table.cands tr.cur td{background:var(--fr-soft)}
+
+.bars{display:flex;flex-direction:column;gap:6px;font-size:13px}
+.statebox{display:flex;flex-direction:column;gap:6px;font-size:14.5px;border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:var(--surface-2)}
+.statebox .row{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.who{font-family:var(--mono);font-weight:500;font-size:13px}
+.chip{font-family:var(--mono);font-size:11px;letter-spacing:0.03em;padding:1px 7px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+.log{list-style:none;padding:0;margin:0;max-height:230px;overflow:auto;border-top:1px solid var(--line);font-size:14px}
+.log li{border-bottom:1px solid var(--line)}
+.log button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:52px 1fr;gap:8px;width:100%;padding:5px 4px;cursor:pointer;color:var(--muted)}
+.log li.past button{color:var(--ink)}
+.log li.now button{background:var(--tint)}
+.log .lt{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;padding-top:2px}
+.meter{display:flex;flex-direction:column;gap:4px}
+.meter .track{position:relative;height:14px;background:var(--surface-2);border:1px solid var(--line);border-radius:3px}
+.meter .fill{position:absolute;left:0;top:0;bottom:0;background:var(--cov-edge)}
+.meter .mark{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+.meter .lab{display:flex;justify-content:space-between;font-family:var(--mono);font-size:12px;color:var(--muted)}
+.boards{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:560px){.boards{grid-template-columns:1fr 1fr}}
+.boards figure{margin:0;display:flex;flex-direction:column;gap:6px}
+.boards figcaption{font-family:var(--display);font-weight:600;font-size:17px}
+.radio-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.radio-row figure{margin:0;display:flex;flex-direction:column;gap:4px}
+.radio-row figcaption{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.xbar{display:grid;grid-template-columns:72px 1fr 62px;gap:8px;align-items:center;font-size:13px}
+.xbar .track{height:10px;background:var(--surface-2);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.xbar .fill{height:100%}
+.xbar .num{font-family:var(--mono);font-size:12px;text-align:right}
+.ok{color:var(--good);font-weight:600} .nok{color:var(--bad)}
+
+.lad-wrap{overflow-x:auto}
+table.ladder{border-collapse:separate;border-spacing:0 4px;width:100%;min-width:560px}
+table.ladder th{font-family:var(--mono);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted);text-align:center;padding:2px 6px}
+table.ladder th:nth-child(-n+2){text-align:left}
+table.ladder td{padding:8px 10px;background:var(--surface-2);border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:14.5px}
+table.ladder td:first-child{border-left:1px solid var(--line);border-radius:6px 0 0 6px;font-family:var(--mono);color:var(--muted);width:24px}
+table.ladder td:last-child{border-right:1px solid var(--line);border-radius:0 6px 6px 0}
+table.ladder td.act{font-family:var(--display);font-weight:600;font-size:17px;white-space:nowrap}
+table.ladder td.cond{color:var(--muted)}
+table.ladder td.arm{text-align:center;width:84px;font-family:var(--mono);font-size:12px}
+td.arm .na{color:var(--line)}
+td.arm .holds{color:var(--muted)}
+td.arm .pick{display:inline-block;background:var(--accent);color:var(--surface);border-radius:999px;padding:2px 9px;font-weight:500}
+
+/* arms */
+.switch-row{display:grid;grid-template-columns:1fr;gap:16px;align-items:start}
+@media (min-width:900px){.switch-row{grid-template-columns:minmax(300px,380px) 1fr}}
+table.switch{border-collapse:separate;border-spacing:6px;font-family:var(--display);font-size:17px;margin:-6px}
+table.switch th{font-weight:500;color:var(--muted);font-size:14px;text-align:left;padding:2px 6px}
+table.switch td{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-weight:600}
+table.switch td.on{background:var(--on-bg);color:var(--on-ink);border-color:transparent}
+table.switch td.off{color:var(--no);font-weight:500}
+.off-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.rules{display:grid;grid-template-columns:1fr;gap:12px}
+@media (min-width:760px){.rules{grid-template-columns:repeat(3,1fr)}}
+.rule{border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:var(--surface-2);display:flex;flex-direction:column;gap:6px;font-size:14.5px}
+.rule h4{font-size:16px}
+.rule ul{padding-left:18px;display:flex;flex-direction:column;gap:3px}
+
+/* measured */
+.measured{border:1px dashed var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.note{font-size:14px;color:var(--muted);max-width:80ch}
+a{color:var(--accent)}
+.how{padding-left:22px;display:flex;flex-direction:column;gap:6px;font-size:15px}
+.how li::marker{font-family:var(--mono);color:var(--accent);font-weight:500}
+.res-grid{display:grid;grid-template-columns:1fr;gap:20px}
+@media (min-width:860px){.res-grid{grid-template-columns:repeat(3,1fr)}}
+.res{display:flex;flex-direction:column;gap:8px;border-top:2px solid var(--line);padding-top:10px}
+.res p{font-size:15.5px}
+.res p.note{font-size:13.5px}
+.res .fig{margin-top:auto;font-family:var(--display);font-weight:600;font-size:17px}
+table.ladder th:nth-child(3){text-align:left}
+@media (min-width:760px){.rules.two{grid-template-columns:repeat(2,1fr)}}
+.rule b{font-weight:600}
+@media (max-width:640px){
+table.ladder,table.ladder tbody{display:block;min-width:0}
+table.ladder thead{display:none}
+table.ladder tr{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 4px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:10px 12px;margin-bottom:6px}
+table.ladder td,table.ladder td:first-child,table.ladder td:last-child{background:none;border:0;border-radius:0;padding:0;width:auto}
+table.ladder td:first-child{flex:0 0 22px}
+table.ladder td.act{flex:1 1 0;white-space:normal;font-size:16px}
+table.ladder td.cond{flex:0 0 100%;box-sizing:border-box;padding-left:28px;font-size:14px}
+table.ladder td.arm{width:auto;text-align:left}
+table.ladder td.arm:nth-child(4){margin-left:28px}
+table.ladder td.arm span{font-size:0}
+table.ladder td.arm span::before{font-size:11px}
+table.ladder td.arm span.pick{padding:2px 7px}
+table.ladder td.arm span.na{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:1px 6px;color:var(--muted);opacity:0.6}
+table.ladder td.arm:nth-child(4) span::before{content:"R"}
+table.ladder td.arm:nth-child(5) span::before{content:"A"}
+table.ladder td.arm:nth-child(6) span::before{content:"PH"}
+table.ladder td.arm:nth-child(7) span::before{content:"PC"}
+}
+.num-grid{display:grid;grid-template-columns:1fr;gap:20px 28px}
+@media (min-width:860px){.num-grid{grid-template-columns:repeat(2,1fr)}}
+.num-group{display:flex;flex-direction:column;gap:14px}
+#numbers{gap:34px}
+.num-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;padding-bottom:6px;border-bottom:2px solid var(--accent)}
+.num-h span{font-family:var(--mono);font-size:12px;font-weight:400;letter-spacing:0.04em;text-transform:uppercase;color:var(--muted)}
+.num-sub{font-size:14px;color:var(--muted)}
+.num-card{display:flex;flex-direction:column;gap:6px;border-top:2px solid var(--line);padding-top:10px;min-width:0}
+table.nums{border-collapse:collapse;width:100%;font-size:15px}
+table.nums td{padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:top}
+table.nums td.n{font-family:var(--mono);font-size:13.5px;font-weight:500;color:var(--accent);white-space:nowrap;width:1%;padding-right:14px;font-variant-numeric:tabular-nums}
+:root{--r3:#7A4FB5; --a-help:#7FA6D6; --a-search:#E0A22A; --done:#2D6A4F}
+.sw-box{width:14px;height:10px;border-radius:2px;display:inline-block}
+.sw-tint{width:12px;height:12px;background:var(--tint);border:1px solid var(--line);display:inline-block}
+.sw-done{width:12px;height:12px;border:2px solid var(--done);opacity:0.7;display:inline-block}
+.sw-cross{font-family:var(--mono);font-size:12px;color:var(--ink)}
+.sw-route{width:22px;height:8px;display:inline-block;background:radial-gradient(circle,var(--ink) 1.6px,transparent 2px) 0 50%/8px 8px repeat-x}
+.sw-tick{width:2px;height:10px;background:var(--ink);display:inline-block}
+.sw-sq{width:8px;height:8px;background:var(--ink);display:inline-block}
+
+/* A2 cell board */
+.cellboard{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.cellboard div{border:1px solid var(--line);border-radius:4px;padding:4px 7px;display:flex;flex-direction:column;gap:0;background:var(--surface);font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.cellboard div b{font-family:var(--display);font-size:15px;font-weight:600;color:var(--ink)}
+.cellboard div.fin{background:var(--cov);border-color:var(--cov-edge)}
+.cellboard div.cur{box-shadow:inset 0 0 0 2px var(--r0)}
+.cellboard div.wo{opacity:0.6;border-style:dashed}
+.log.plain li{display:grid;grid-template-columns:52px 1fr;gap:8px;padding:5px 4px;color:var(--ink)}
+
+/* B2 lists figure */
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{font-size:14px;padding:5px 12px;cursor:pointer;background:var(--surface);color:var(--muted)}
+.seg input:checked+label{background:var(--on-bg);color:var(--on-ink);font-weight:600}
+.seg input:focus-visible+label{outline:2px solid var(--accent);outline-offset:-2px}
+.seg input:disabled+label{opacity:0.4;cursor:default}
+.listfig{max-width:560px;width:100%;align-self:center}
+
+/* D: switch matrix */
+.tablebox{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table.matrix{border-collapse:collapse;width:100%;font-size:15px;min-width:720px}
+.matrix th,.matrix td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.matrix thead th{font-family:var(--display);font-weight:600;font-size:18px}
+.matrix tbody th{font-family:var(--display);font-weight:600;color:var(--muted);font-size:15px;white-space:nowrap}
+.matrix tr:last-child td,.matrix tr:last-child th{border-bottom:none}
+.matrix td.ch{background:var(--on-bg);color:var(--on-ink);font-weight:600}
+
+/* D: side by side */
+.controls{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding-block:10px;border-bottom:1px solid var(--line)}
+.lab{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--muted)}
+#clock{font-family:var(--mono);font-size:15px;min-width:9ch;font-variant-numeric:tabular-nums}
+.panels{display:grid;grid-template-columns:1fr;gap:16px}
+@media (min-width:760px){.panels{grid-template-columns:repeat(2,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.ph h3{font-size:24px}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chips .chip{color:var(--muted)}
+.chips .chip.ch{background:var(--on-bg);color:var(--on-ink);border-color:transparent}
+.prule{font-size:14px;color:var(--muted)}
+.mapbox{width:100%;max-width:460px;align-self:center}
+@supports (grid-template-rows:subgrid){.panel{display:grid;grid-row:span 6;grid-template-rows:subgrid;row-gap:10px;align-content:start}.panel .mapbox{align-self:start;justify-self:center}}
+canvas.map{display:block;width:100%;aspect-ratio:1/1}
+.robots{display:flex;flex-direction:column;gap:6px}
+.rr{display:grid;grid-template-columns:22px 1fr;column-gap:6px;row-gap:1px;font-size:13px;align-items:center}
+.rid{font-family:var(--mono);font-weight:500;color:var(--rc)}
+.rsub{grid-column:2;display:flex;align-items:center;gap:4px 10px;flex-wrap:wrap;min-height:1.45em}
+.rr .act{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:0}
+.rr .act i{width:9px;height:9px;border-radius:2px;flex:0 0 auto}
+.rr .act span{overflow-wrap:anywhere}
+.kn{display:flex;align-items:center;gap:5px;flex:0 0 auto;font-family:var(--mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+.kn .bar{position:relative;width:40px;height:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.kn .bar i{position:absolute;left:0;top:0;bottom:0;background:var(--accent)}
+.chk{font-size:12px;color:var(--muted)}
+canvas.gantt{display:block;width:100%}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px 12px;margin:0;border-top:1px solid var(--line);padding-top:10px}
+.stats div{display:flex;flex-direction:column;gap:1px}
+.stats dt{font-size:12px;color:var(--muted)}
+.stats dd{margin:0;font-family:var(--mono);font-size:15px;font-variant-numeric:tabular-nums}
+.absent{display:none;font-size:15px;color:var(--muted);padding:14px;border:1px dashed var(--line);border-radius:8px}
+.panel.off .absent{display:block}
+.panel.off .mapbox,.panel.off .robots,.panel.off canvas.gantt,.panel.off .stats{display:none}
+@media (min-width:860px){.res-grid.six{grid-template-columns:repeat(3,1fr)}}
+.res .fig small{display:block;font-family:var(--body);font-weight:400;font-size:14px;color:var(--muted)}
+#dbg{font-family:var(--mono);font-size:11px;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--surface);border:1px solid var(--line);padding:10px}
+canvas.cv{box-sizing:border-box}
+
+/* Project-page theme for the explainer pages: a white academic project page
+   (the look of pages like nerfies.github.io, written from scratch, no template code).
+   Append AFTER a page's base CSS, and strip the base's dark-mode blocks (theme.py does both).
+   Light only, by request: white page, Google Sans titles, Noto Sans text, dark pill buttons,
+   light grey full-width bands behind the interactive scenes.
+   Figure colours (robots, coverage, activities) stay with the page; this file sets the neutrals. */
+:root{
+  color-scheme:light;
+  --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F5; --band:#F5F5F5; --foot:#FAFAFA;
+  --ink:#363636; --text:#4A4A4A; --muted:#6F6F6F; --line:#DBDBDB; --href:#3273DC;
+  --accent:#363636; --on-bg:#EEF3FC; --on-ink:#2160C4;
+  --display:"Google Sans", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --body:"Noto Sans", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --mono:"Noto Sans Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.6}
+h1,h2,h3,h4{font-family:var(--display);color:var(--ink);text-wrap:balance}
+a{color:var(--href);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1120px;gap:72px;padding-block:0}
+
+/* hero */
+header.top{align-items:center;text-align:center;gap:18px;padding-block:64px 4px}
+header.top h1{font-size:clamp(34px,5.4vw,48px);font-weight:700;letter-spacing:-0.01em;line-height:1.15}
+header.top .subtitle{font-family:var(--display);font-size:clamp(19px,2.5vw,24px);line-height:1.35;color:var(--text);max-width:40ch;text-wrap:balance}
+.toc{justify-content:center;gap:10px;padding-block:6px}
+.toc a{display:inline-flex;align-items:center;gap:8px;font-family:var(--display);font-weight:500;font-size:15px;color:#FFFFFF;background:var(--ink);border:0;border-radius:999px;padding:7px 16px 7px 8px;text-decoration:none}
+.toc a b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,0.18);color:#FFFFFF;font-size:12px;font-weight:500;margin:0}
+.toc a:hover{background:#4A4A4A;text-decoration:none}
+.lede{max-width:760px;font-size:17px;text-align:justify;hyphens:auto}
+
+/* sections */
+.part{gap:32px}
+.part-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;border-top:0;padding-top:0}
+.part-head .letter{font-family:var(--mono);font-size:12px;font-weight:500;line-height:1.2;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)}
+.part-head .letter::before{content:"Part "}
+.part-head h2{font-size:clamp(26px,3.3vw,32px);font-weight:700;line-height:1.2}
+.part-head p{max-width:760px;color:var(--text);text-align:justify;hyphens:auto}
+
+/* interactive scenes sit on a full-width light band; panels inside turn white */
+.stage{--surface-2:#FFFFFF;background:var(--band);border:0;border-radius:0;box-shadow:0 0 0 100vmax var(--band);clip-path:inset(0 -100vmax);padding:36px 0;gap:20px}
+.stage-head{align-items:center;text-align:center;gap:8px}
+.stage-head h3{font-size:clamp(21px,2.5vw,24px);font-weight:700;line-height:1.25}
+.stage-head p{max-width:72ch}
+.tag{align-self:center;background:#FFFFFF;color:var(--muted)}
+canvas.cv{border-radius:4px}
+
+/* controls: pill buttons like a project page's link buttons */
+.btn{font-family:var(--display);font-weight:500;font-size:15px;border-radius:999px;padding:6px 16px;background:#FFFFFF;border:1px solid var(--line);color:var(--ink)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#FFFFFF}
+.btn:hover:not(:disabled){border-color:#B5B5B5}
+.btn.primary:hover:not(:disabled){background:#4A4A4A}
+.dots button.on{background:var(--ink);border-color:var(--ink);color:#FFFFFF}
+input[type=range]{accent-color:var(--href)}
+.toc a:focus-visible,.btn:focus-visible,.log button:focus-visible,select:focus-visible,input:focus-visible,.dots button:focus-visible{outline:2px solid var(--href);outline-offset:2px}
+.seg{border-radius:999px}
+.seg input:checked+label{background:var(--ink);color:#FFFFFF}
+
+/* text blocks */
+.rule{border-radius:6px}
+.how li::marker{color:var(--ink)}
+.note{color:var(--muted)}
+.measured{border:0;border-radius:0;padding:0}
+.res{border-top:1px solid var(--line)}
+.res .fig{font-weight:700;color:var(--ink)}
+.num-h{border-bottom:1px solid var(--line)}
+table.nums td.n{color:var(--ink)}
+td.arm .pick{background:var(--ink);color:#FFFFFF}
+
+/* footer band */
+.foot{background:var(--foot);box-shadow:0 0 0 100vmax var(--foot);clip-path:inset(0 -100vmax);padding-block:40px 56px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font-size:14px;color:var(--muted)}
+.foot b{font-family:var(--display);font-weight:500;font-size:15px;color:var(--ink)}
+@media (max-width:640px){header.top{padding-block:40px 0}.wrap{gap:56px}.stage{padding-block:28px}}
+
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<header class="top">
+  <h1>Reconnection Planning V2</h1>
+  <p class="subtitle">How the robots share out the forest and sweep it cell by cell</p>
+  <p class="lede">V2 keeps V1’s radios and map swapping, and changes how each robot explores. The forest is cut into 25 cells of 20 m, and a robot sweeps a cell along a short route of viewpoints instead of driving to one goal at a time. In two of the four arms, the robots also stop sharing out the cells as they go, and follow lists made before the run. In every arm here, robots swap maps whenever their radios reach each other, and no robot chases a teammate or sets up a meeting. The scenes below are small toys. Measured results follow them, and every number the rules use is listed at the end.</p>
+  <nav class="toc" aria-label="Sections">
+    <a href="#explore"><b>A</b>Sweeping a cell</a>
+    <a href="#share"><b>B</b>Sharing out the cells</a>
+    <a href="#talk"><b>C</b>Talking</a>
+    <a href="#arms"><b>D</b>The four arms</a>
+    <a href="#measured"><b>E</b>Results</a>
+    <a href="#numbers"><b>F</b>The numbers</a>
+  </nav>
+</header>
+
+<!-- ================= PART A ================= -->
+<section class="part" id="explore">
+  <div class="part-head"><span class="letter">A</span><h2>How one robot sweeps a cell</h2>
+    <p>The map is the same as in V1: ground not seen yet, free ground, and blocked ground (a trunk plus a 1.5 m safety ring). The forest is a 100 m square cut into 5 × 5 cells of 20 m, and the centre cell is home. Every 5 s each robot checks how much of each cell is still unknown on its own map. A cell is finished at 10% unknown or less. Arms A, PH and PC sweep a cell as shown here. Arm R still drives to one goal at a time, as in V1.</p></div>
+
+  <article class="stage" id="a1">
+    <div class="stage-head"><span class="tag">Toy map</span><h3>Planning a route through a cell</h3>
+      <p>A frozen moment from the toy run below. The toy forest is 60 × 40 m, six cells worked in a fixed order. Press Play, or pick a step.</p></div>
+    <div class="stage-body">
+      <div class="viz">
+        <canvas class="cv" id="a1c" style="aspect-ratio:3/2" role="img" aria-label="Toy map showing how a robot plans a route through a cell"></canvas>
+        <div class="ctl">
+          <button class="btn" id="a1back" type="button">Back</button>
+          <button class="btn primary" id="a1play" type="button">Play</button>
+          <button class="btn" id="a1next" type="button">Next</button>
+          <ol class="dots" id="a1dots" aria-label="Steps"></ol>
+        </div>
+        <div class="legend">
+          <span><i class="sw" style="background:var(--unseen)"></i>Not seen yet</span>
+          <span><i class="sw" style="background:var(--surface)"></i>Free</span>
+          <span><i class="sw" style="background:var(--tree)"></i>Trunk + safety ring</span>
+          <span><i class="sw-dot" style="background:var(--fr)"></i>Spot</span>
+          <span><i class="sw-dot" style="background:var(--r0)"></i>R1</span>
+        </div>
+        <p class="note">Toy scale: the map squares here are 0.5 m, and the robot sees and the rays reach only 6 m, so that a cell needs several viewpoints. The planner itself uses 0.2 m map squares and 20 m rays.</p>
+      </div>
+      <aside class="side">
+        <p class="k" id="a1k">Step 1 of 5</p>
+        <h4 id="a1h"></h4>
+        <p id="a1p"></p>
+        <div class="tbl-wrap" id="a1tw"><table class="cands" id="a1t"></table></div>
+      </aside>
+    </div>
+  </article>
+
+  <article class="stage" id="a2">
+    <div class="stage-head"><span class="tag">Toy map · not scripted</span><h3>Then drive the route, and keep it up to date</h3>
+      <p>One robot sweeps the six cells in order. Nothing here is drawn by hand: the page plans every route with the rules above as you watch. The robot drives through the viewpoints without stopping, passing each one at 2 m. Each time it passes one, it plans the route again, and takes the new route only if it is clearly different.</p></div>
+    <div class="stage-body">
+      <div class="viz">
+        <canvas class="cv" id="a2c" style="aspect-ratio:3/2" role="img" aria-label="A toy robot sweeping six cells with routes"></canvas>
+        <div class="ctl">
+          <button class="btn primary" id="a2play" type="button">Play</button>
+          <button class="btn" id="a2reset" type="button">Restart</button>
+          <label for="a2speed">Speed <select id="a2speed"><option value="8">8×</option><option value="20" selected>20×</option><option value="50">50×</option></select></label>
+          <span class="clock" id="a2clock">0 s</span>
+        </div>
+        <div class="legend">
+          <span><i class="sw" style="background:var(--cov);border-color:var(--cov-edge)"></i>Cell finished</span>
+          <span><i class="sw" style="border:2px solid var(--r0)"></i>Cell the route serves</span>
+          <span><i class="sw-route"></i>Route still to drive</span>
+          <span><i class="sw-sq"></i>Last viewpoint</span>
+          <span>○ passed</span><span>× failed</span>
+        </div>
+      </div>
+      <aside class="side">
+        <span class="k">The six cells, in list order</span>
+        <div class="cellboard" id="a2board"></div>
+        <div class="statebox" id="a2state"></div>
+        <ol class="log plain" id="a2log"></ol>
+      </aside>
+    </div>
+    <div class="rules">
+      <div class="rule"><h4>Keeping the route up to date</h4><ul>
+        <li>After passing a viewpoint, the robot plans the route again from where it is. It takes the new route only if the first viewpoint moved more than 1.25 m, or the length changed by more than 10%.</li>
+        <li>A viewpoint within 1.25 m of one on the old route keeps its old place in the order. A fresh order wins only if it is at least 10% shorter.</li>
+        <li>It drops any viewpoint that turns out to be blocked. Once a second, it also drops the next one if less than 20 m² of what it was picked to see is still unknown. After a drop it plans again, or ends the route if nothing is left.</li>
+      </ul></div>
+      <div class="rule"><h4>When a route ends</h4><ul>
+        <li>As soon as its cell is finished, even with viewpoints left. The robot plans the next cell at once, without stopping.</li>
+        <li>At the last viewpoint, the robot stops within 0.4 m and waits 2 s for its map to catch up, as after a goal in V1.</li>
+        <li>If no spot sees 20 m² of the cell or the next one, the robot uses V1’s step for once and drives to a single goal.</li>
+      </ul></div>
+      <div class="rule"><h4>Getting stuck</h4><ul>
+        <li>The route fails if the robot moves less than 0.2 m in 15 s or runs over its time limit. The next viewpoint goes on the failed list.</li>
+        <li>Time limit: each leg gets its length at 0.15 m/s, times 3, kept between 30 s and 180 s. The length is the straight line to the viewpoint, or for the first leg the planned path if that is longer. The clock restarts whenever the next viewpoint changes.</li>
+        <li>If the robot stops to give way to a teammate (Part C), it sends the rest of the route again when it drives on.</li>
+      </ul></div>
+    </div>
+    <p class="note">The real runs behave the same way. Across the A, PH and PC runs, 8 in 10 routes had one or two viewpoints, and none had more than five. For each viewpoint a robot drove past, it dropped about four, because it had already seen their ground on the way.</p>
+    <div class="rules two">
+      <div class="rule"><h4>Finishing the run</h4><ul>
+        <li>A robot is finished once every cell is at most 10% unknown on its own map. It checks this every 5 s and whenever it plans, and the first time is enough. It then drives home (Part C).</li>
+        <li>Every robot waits 60 s at the start. A robot also counts as finished after 300 s of finding nothing to plan without moving 1 m, or after 500 planning steps.</li>
+      </ul></div>
+      <div class="rule"><h4>Writing a cell off</h4><ul>
+        <li>Each time the robot plans for the cell it is working, and the cell’s unknown hasn’t fallen since the last time, that is a strike. Any fall clears the strikes. In A, PH and PC only a route counts, and a single goal neither adds nor clears one. In R every goal counts.</li>
+        <li>After 3 strikes the robot checks the cell once more. If it still isn’t finished, it is written off for the whole team: no robot works it again, and the finish rule skips it. Home is never written off, and neither is a cell no robot has seen into yet.</li>
+      </ul></div>
+    </div>
+  </article>
+</section>
+
+<!-- ================= PART B ================= -->
+<section class="part" id="share">
+  <div class="part-head"><span class="letter">B</span><h2>Sharing out the cells</h2>
+    <p>Two ways, two arms each. R and A share out the cells as they go, as V1 does. PH and PC follow lists made before the run.</p></div>
+
+  <article class="stage" id="bb">
+    <div class="stage-head"><span class="tag">Toy board · not scripted</span><h3>R and A: share out the cells as you go</h3>
+      <p>V1’s rule on bigger cells. Each robot keeps its own copy of the board of 25 cells, showing which are finished, and sends it in its beacon. From its copy, each robot shares out the unfinished cells as one tour per robot, so that the last robot finishes as early as possible, and works the first cell of its own tour (R takes goals in or next to that cell first). When the link drops, the copies drift apart and some cells get done twice. In this toy, a robot does a cell by reaching its middle.</p></div>
+    <div class="stage-body">
+      <div class="viz">
+        <div class="boards">
+          <figure><figcaption>R1’s copy of the board</figcaption><canvas class="cv" id="bbc0" style="aspect-ratio:1/1" role="img" aria-label="R1's copy of the board and the tours it works out"></canvas></figure>
+          <figure><figcaption>R2’s copy of the board</figcaption><canvas class="cv" id="bbc1" style="aspect-ratio:1/1" role="img" aria-label="R2's copy of the board and the tours it works out"></canvas></figure>
+        </div>
+        <div class="ctl">
+          <button class="btn primary" id="bbplay" type="button">Play</button>
+          <input type="range" id="bbscrub" min="0" max="100" value="0" aria-label="Time">
+          <span class="clock" id="bbclock">0 s</span>
+        </div>
+        <div class="legend">
+          <span><i class="sw" style="background:var(--cov);border-color:var(--cov-edge)"></i>Done, as this robot knows it</span>
+          <span><i class="sw-line" style="border-color:var(--r0)"></i>R1’s tour</span>
+          <span><i class="sw-line" style="border-color:var(--r1)"></i>R2’s tour</span>
+          <span>Solid line: the robot’s own tour · dashed line: the tour it works out for its teammate · dashed circle: where it last heard its teammate</span>
+        </div>
+      </div>
+      <aside class="side">
+        <div class="statebox" id="bbstate"></div>
+        <ol class="log" id="bblog"></ol>
+      </aside>
+    </div>
+    <div class="rules two">
+      <div class="rule"><h4>Which cells a route uses</h4><ul>
+        <li>The route serves the first cell on the robot’s tour, or the second if no spot sees 20 m² of the first.</li>
+        <li>Viewpoints may stand only in cells on the robot’s tour.</li>
+      </ul></div>
+      <div class="rule"><h4>When the tour is empty</h4><ul>
+        <li>Every cell is finished as far as the robot’s board shows, counting what teammates told it, but its own map can still lack some of that ground.</li>
+        <li>It then fills holes anywhere on its own map, one goal at a time, until its own map passes the finish rule or a teammate’s map arrives.</li>
+      </ul></div>
+    </div>
+  </article>
+
+  <article class="stage" id="bl">
+    <div class="stage-head"><span class="tag">The real lists</span><h3>PH and PC: lists made before the run</h3>
+      <p>PH and PC share nothing out during the run. Before it, the 24 outer cells are split into one list per robot, and each robot works its own list in order. These are the lists the runs used.</p></div>
+    <div class="stage-body">
+      <div class="viz">
+        <canvas class="cv listfig" id="blc" style="aspect-ratio:1/1" role="img" aria-label="The stored cell lists for each robot"></canvas>
+        <div class="ctl">
+          <div class="seg" role="radiogroup" aria-label="Team size">
+            <input type="radio" id="bl2" name="blN" value="2" checked><label for="bl2">2 robots</label>
+            <input type="radio" id="bl3" name="blN" value="3"><label for="bl3">3</label>
+            <input type="radio" id="bl4" name="blN" value="4"><label for="bl4">4</label>
+          </div>
+          <div class="seg" role="radiogroup" aria-label="Arm">
+            <input type="radio" id="blPH" name="blA" value="PH" checked><label for="blPH">PH</label>
+            <input type="radio" id="blPC" name="blA" value="PC"><label for="blPC">PC</label>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i class="sw-dot" style="background:var(--ink)"></i>Start of a list</span>
+          <span>Numbers: the order of the cells</span>
+          <span><i class="sw-dash"></i>Where the robot goes to help</span>
+        </div>
+      </div>
+      <aside class="side">
+        <span class="k">How it works</span>
+        <ol class="how">
+          <li>Every list has the same number of cells: 12, 8 or 6. It starts next to home, moves each time to a neighbouring cell, and ends at home.</li>
+          <li>The robot works the first cell on its list that isn’t finished. Cells a teammate has finished are skipped. The order never changes.</li>
+          <li>When its own list is done, the robot helps one set teammate. It goes to that teammate’s last cell before home and works the list backwards, so the two meet partway.</li>
+          <li>Then it drives home and waits within 1 m. It stops planning but keeps swapping maps, and is finished once every cell is 90% known on its own map. If a cell turns unfinished again, it goes back to work.</li>
+        </ol>
+        <div class="statebox" id="blstate"></div>
+      </aside>
+    </div>
+    <div class="rules">
+      <div class="rule"><h4>How PH’s lists were picked</h4><ul>
+        <li>A time model scores every possible split: 51.2 s to cross a cell, 1 s plus 0.4 rad/s for each turn, and 2.56 s per metre for the trip home.</li>
+        <li>PH takes the split with the earliest finish for the last robot: 713, 576 and 397 s in the model for 2, 3 and 4 robots. The search tries every split.</li>
+      </ul></div>
+      <div class="rule"><h4>How PC’s lists were picked</h4><ul>
+        <li>The same model, plus contact: how much of the time the robots would be in radio range on those lists, counting late in the run more.</li>
+        <li>Among splits that finish within 25% of the fastest, PC takes the best trade, where 1 point of contact is worth 4.2 s with 2 robots and 7.1 s with 4. Its lists take 751 s and 429 s in the model.</li>
+      </ul></div>
+      <div class="rule"><h4>No PC with 3 robots</h4><ul>
+        <li>Of all 216 equal splits for 3 robots, PH’s lists already had the most contact, so there was nothing to change.</li>
+      </ul></div>
+    </div>
+  </article>
+</section>
+
+<!-- ================= PART C ================= -->
+<section class="part" id="talk">
+  <div class="part-head"><span class="letter">C</span><h2>How robots talk to each other</h2>
+    <p>Exactly as in V1, and the same in every arm. In V2 this is the whole team layer: robots swap maps when their radios reach, and nobody does anything to get back in range.</p></div>
+
+  <article class="stage" id="b1">
+    <div class="stage-head"><span class="tag">Toy scene</span><h3>Hearing each other and swapping maps</h3>
+      <p>Every robot sends a short beacon once a second. Trunks block the radio. When two robots are in contact, they swap maps until each has everything the other had.</p></div>
+    <div class="stage-body">
+      <div class="viz">
+        <canvas class="cv" id="b1c" style="aspect-ratio:2/1" role="img" aria-label="Two robots sending beacons through trees"></canvas>
+        <div class="radio-row">
+          <figure><figcaption>R1’s map: its own (blue) + from R2 (pink)</figcaption><canvas class="cv" id="b1m0" style="aspect-ratio:1/1"></canvas></figure>
+          <figure><figcaption>R2’s map: its own (pink) + from R1 (blue)</figcaption><canvas class="cv" id="b1m1" style="aspect-ratio:1/1"></canvas></figure>
+        </div>
+        <div class="ctl">
+          <button class="btn primary" id="b1play" type="button">Play</button>
+          <input type="range" id="b1scrub" min="0" max="80" value="0" aria-label="Time">
+          <span class="clock" id="b1clock">0 s</span>
+        </div>
+      </div>
+      <aside class="side">
+        <div class="statebox" id="b1st"></div>
+        <div id="b1ex" class="bars"></div>
+        <ol class="log" id="b1log"></ol>
+      </aside>
+    </div>
+    <div class="rules">
+      <div class="rule"><h4>What a beacon carries</h4><ul>
+        <li>Where the robot is, and where it is going next.</li>
+        <li>Which teammates it hears directly.</li>
+        <li>Whether it has finished, whether it knows the whole team has finished, and whether it is home.</li>
+        <li>How much map it has sent, and how much it has received from each teammate.</li>
+        <li>Its copy of the board: which cells are finished or written off, as far as it knows.</li>
+      </ul></div>
+      <div class="rule"><h4>Words the rules use</h4><ul>
+        <li><b>Present:</b> its beacon arrived straight from it in the last 10 s. Beacons are never passed on, so hearing about a teammate from someone else doesn’t count.</li>
+        <li><b>In contact:</b> I hear you, and your beacon says you hear me.</li>
+        <li><b>All in contact:</b> every pair in the team is in contact, as far as the beacons show.</li>
+      </ul></div>
+      <div class="rule"><h4>Swapping maps, and finishing together</h4><ul>
+        <li>A swap is done once each robot has received everything the other had sent when the contact began. It gives up after 120 s with no new data, or 600 s in total.</li>
+        <li>A robot sends only its own map. To get a teammate’s map, it has to be in contact with that teammate itself.</li>
+        <li>A finished robot knows the whole team has finished once it hears every teammate say it has finished too, or hears any beacon that says the whole team has finished.</li>
+      </ul></div>
+    </div>
+  </article>
+
+  <article class="stage" id="b2">
+    <div class="stage-head"><span class="tag">One list, four arms</span><h3>What a robot does next</h3>
+      <p>Each robot keeps running down this list and does the first row that applies. The arms differ only in which rows they have.</p></div>
+    <div class="lad-wrap"><table class="ladder">
+      <thead><tr><th>#</th><th>Activity</th><th>When it applies</th><th>R</th><th>A</th><th>PH</th><th>PC</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td class="act">Explore its own cells</td><td class="cond">Some cell of its share isn’t finished. R and A: the cells on its tour. PH and PC: the cells on its list.</td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td></tr>
+        <tr><td>2</td><td class="act">Help a teammate</td><td class="cond">Its own list is done, but some cell on its set teammate’s list isn’t. It works that list backwards.</td><td class="arm"><span class="na">–</span></td><td class="arm"><span class="na">–</span></td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td></tr>
+        <tr><td>3</td><td class="act">Fill holes</td><td class="cond">Every cell is finished as far as its board shows, but its own map doesn’t pass the finish rule yet. One goal at a time, anywhere.</td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="na">–</span></td><td class="arm"><span class="na">–</span></td></tr>
+        <tr><td>4</td><td class="act">Wait at home</td><td class="cond">Both lists are done, but its own map doesn’t pass the finish rule yet. It waits within 1 m of home for teammates’ maps.</td><td class="arm"><span class="na">–</span></td><td class="arm"><span class="na">–</span></td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td></tr>
+        <tr><td>5</td><td class="act">Go home</td><td class="cond">Finished: every cell is 90% known on its own map.</td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td><td class="arm"><span class="pick">✓</span></td></tr>
+      </tbody>
+    </table></div>
+    <p class="note">Map swapping is not on the list. It happens in every arm whenever two robots are in range, whatever they are doing.</p>
+  </article>
+
+  <article class="stage" id="b3">
+    <div class="stage-head"><span class="tag">Every arm</span><h3>Driving home, and giving way</h3>
+      <p>Exploring drives a route (or a goal, in R). The trip home is a plain drive to a point. These rules hold in every arm.</p></div>
+    <div class="rules two">
+      <div class="rule"><h4>Driving home</h4><ul>
+        <li>The drive home after finishing ends within 1 m of home. In PH and PC, the drive home to wait also ends within 1 m.</li>
+        <li>If the robot moves less than 0.2 m in 15 s on the way home, it makes a short escape move of 1.5–6 m, then carries on.</li>
+        <li>The drive home gives up after 600 s, and the robot stops where it is.</li>
+      </ul></div>
+      <div class="rule"><h4>Giving way</h4><ul>
+        <li>Robots give way in a fixed order: R2 gives way to R1, R3 to R1 and R2, and so on.</li>
+        <li>A driving robot, exploring included, stops when a teammate it gives way to is moving within 1.5 m of it.</li>
+        <li>It drives on once that teammate is 2.5 m away, or has stood still for 10 s at least 1.5 m away, or after 120 s at most. After a 120 s stop, the same teammate can’t stop it again for 30 s unless it moves.</li>
+      </ul></div>
+    </div>
+  </article>
+</section>
+
+<!-- ================= PART D ================= -->
+<section class="part" id="arms">
+  <div class="part-head"><span class="letter">D</span><h2>The four arms: one change at a time</h2>
+    <p>Each arm changes one thing from the arm on its left. R is V1’s planner under V2’s cells and finish rule, so it is the baseline the others are measured against.</p></div>
+  <div class="tablebox">
+    <table class="matrix" aria-label="What each arm changes">
+      <thead><tr><th></th><th>R</th><th>A</th><th>PH</th><th>PC</th></tr></thead>
+      <tbody>
+        <tr><th>Which cells</th><td>Shared out as it goes</td><td>Shared out as it goes</td><td class="ch">A list made before the run</td><td>A list made before the run</td></tr>
+        <tr><th>How it covers a cell</th><td>One goal at a time, 2 s stop at each</td><td class="ch">A route of viewpoints, no stops between</td><td>Route</td><td>Route</td></tr>
+        <tr><th>When its own share is done</th><td>Fills holes anywhere, one goal at a time</td><td>Fills holes anywhere, one goal at a time</td><td class="ch">Helps one teammate, then waits at home</td><td>Helps one teammate, then waits at home</td></tr>
+        <tr><th>Lists picked for</th><td>–</td><td>–</td><td class="ch">Earliest finish</td><td class="ch">Earliest finish and radio contact</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Shaded cells mark what changed from the column on the left.</p>
+
+  <div class="controls" role="group" aria-label="Animation controls">
+    <button id="play" type="button" class="btn primary">Play</button>
+    <button id="restart" type="button" class="btn">Restart</button>
+    <label class="lab" for="speed">Speed
+      <select id="speed"><option value="10">×10</option><option value="25" selected>×25</option><option value="50">×50</option><option value="100">×100</option></select>
+    </label>
+    <div class="seg" role="radiogroup" aria-label="Team size">
+      <input type="radio" id="n2" name="nsel" value="2" checked><label for="n2">2 robots</label>
+      <input type="radio" id="n3" name="nsel" value="3"><label for="n3">3</label>
+      <input type="radio" id="n4" name="nsel" value="4"><label for="n4">4</label>
+    </div>
+    <input type="range" id="scrub" min="0" max="1000" step="1" value="0" aria-label="Simulated time">
+    <output id="clock" for="scrub">t = 0 s</output>
+  </div>
+  <div class="legend" aria-label="Legend">
+    <span><i class="sw-box" style="background:var(--a-explore)"></i>Working its own cells</span>
+    <span><i class="sw-box" style="background:var(--a-help)"></i>Helping a teammate</span>
+    <span><i class="sw-box" style="background:var(--a-search)"></i>Filling holes in its own map</span>
+    <span><i class="sw-box" style="background:var(--a-wait)"></i>Waiting at home</span>
+    <span><i class="sw-box" style="background:var(--a-home)"></i>Finished, driving home</span>
+    <span><i class="sw-tick"></i>Finished</span>
+    <span><i class="sw-tint"></i>Seen by some robot</span>
+    <span><i class="sw-done"></i>Cell finished on some robot’s map</span>
+    <span><i class="sw-cross">✕</i>Single goal</span>
+    <span><i class="sw-route"></i>Route</span>
+    <span><i class="sw-line"></i>In contact</span>
+  </div>
+  <div class="panels" id="panels"></div>
+  <p class="note">Toy runs: the real rules and the real stored lists, in a simpler world than Part A’s. Trees block neither sight nor driving, a robot maps everything within 10 m, and the radio reaches a plain 27 m. Times are not the real ones, and each run is one sample, so read the panels for how the robots behave. The toy makes one goal at a time look much worse than it is: here R takes 1.5 to 2.6 times as long as A, against 13–22% longer in the real runs.</p>
+</section>
+
+<!-- ================= PART E ================= -->
+<section class="part" id="measured">
+  <div class="part-head"><span class="letter">E</span><h2>What the runs showed</h2>
+    <p>Measured in the full simulator, not in the toys: 30 runs for each arm with 2, 3 and 4 robots (PC with 2 and 4 only). “Finished” is when the last robot’s map passed the finish rule. These times are not comparable with V1’s, because V2’s finish rule is stricter.</p></div>
+  <div class="measured">
+    <div class="res-grid six">
+      <div class="res"><h3>Routes: A against R</h3>
+        <p>The last robot finished 18%, 11% and 12% sooner with 2, 3 and 4 robots, and each robot drove 15–18% less.</p>
+        <p class="fig">Finish: 1198 → 982 s, 1062 → 941 s, 1124 → 991 s<small>with 2, 3 and 4 robots</small></p></div>
+      <div class="res"><h3>Stored lists: PH against A</h3>
+        <p>25%, 28% and 33% sooner, driving 24–36% less. PH was also the steadiest arm. With 2 robots its runs spread over 678–790 s, against 667–1421 s for A.</p>
+        <p class="fig">Finish: 732, 682 and 663 s<small>A: 982, 941 and 991 s</small></p></div>
+      <div class="res"><h3>Where PH’s lead comes from</h3>
+        <p>Part of it is covering the cells sooner. The team had every cell at 659, 482 and 414 s in PH, against 835, 590 and 516 s in A.</p>
+        <p>The rest is the wait for maps. With 3 or 4 robots, R and A spent 29–48% of the run (308–474 s) after the team had every cell, while the maps were still reaching the last robot. In PH the robots meet at home, and that wait was 200 s and 249 s.</p>
+        <p class="fig">Share of the lead from covering sooner: 70%, 42%, 31%<small>with 2, 3 and 4 robots</small></p></div>
+      <div class="res"><h3>Radio contact: PH against A</h3>
+        <p>Fixed lists change how often robots are in range. With 2 robots, PH splits the forest into west and east, and pairs were in contact 23.7% of the time against 28.9% in A. With 4 robots it went the other way: 43.0% against 37.0%. With 3, about the same (36.2% against 34.6%).</p>
+        <p>Time cut off in gaps of 2 minutes or more, per robot: 565 s in A and 532 s in PH with 2 robots, 271 and 286 s with 3, 163 and 164 s with 4. As a share of the run, PH looks worse with 2 robots (73% against 55%), only because its runs are shorter.</p>
+        <p class="fig">Longest gap between two robots: 421 → 532 s, 547 → 409 s, 515 → 367 s<small>A → PH, with 2, 3 and 4 robots</small></p></div>
+      <div class="res"><h3>Contact-aware lists: PC against PH</h3>
+        <p>With 2 robots, PC’s north–south split kept pairs in contact 27.8% of the time against 23.7%, cut the time cut off in long gaps from 532 to 333 s per robot, and shortened the longest gap from 532 to 314 s. With 4 robots: contact 45.4% against 43.0%, long gaps 164 → 103 s per robot.</p>
+        <p>Fewer PC robots had to wait at home: 22 of 60 against 48 of 60 with 2 robots.</p>
+        <p class="fig">Finish: 674 against 732 s (8% sooner), 637 against 663 s (4%)<small>with 2 and 4 robots</small></p>
+        <p class="note">PC’s robots finish farther from home. Counting the drive home, PC took 823 s against PH’s 814 s with 2 robots (no clear difference), and 673 against 699 s with 4.</p></div>
+      <div class="res"><h3>A second forest</h3>
+        <p>The same tests on a patchy forest: the same 257 trees per hectare, most of them gathered into 19 thickets. PH beat A again with every team size: 16%, 22% and 34% sooner (998 → 841 s, 771 → 605 s, 932 → 618 s). PC beat PH with 2 robots, 18% sooner (841 → 690 s), but not with 4 (618 → 601 s, no clear difference).</p>
+        <p class="fig">4 of the 5 tests clear<small>240 runs</small></p>
+        <p class="note">With 2 robots, PH’s patchy runs spread over 717–1240 s. In 6 of its 30 runs, the helping robot redid 3 or more cells its teammate had already finished, because it hadn’t heard they were finished.</p></div>
+    </div>
+    <p class="note">A difference counts as clear when it holds up after correcting for the many comparisons made at once. In the main forest, all six planned tests (A against R and PH against A, with each team size) and all four PC tests are clear. No run was cut off unfinished.</p>
+    <p class="note">Next: V1’s chases and meetings on top of A. Those runs are under way, and there are no results yet.</p>
+  </div>
+</section>
+
+<!-- ================= PART F ================= -->
+<section class="part" id="numbers">
+  <div class="part-head"><span class="letter">F</span><h2>The numbers behind the rules</h2>
+    <p>Every number the rules above use, in three groups. These are the settings of the runs in Part E.</p></div>
+  <div class="num-group">
+    <h3 class="num-h">Sweeping a cell <span>Part A</span></h3>
+    <div class="num-grid">
+      <div class="num-card"><h4>Cells and finishing</h4>
+      <p class="num-sub">Every arm.</p>
+      <table class="nums"><tbody>
+        <tr><td class="n">0.2 m</td><td>Size of one map square.</td></tr>
+        <tr><td class="n">20 m</td><td>Size of a cell. 5 × 5 cells cover the 100 m forest, and the centre one is home.</td></tr>
+        <tr><td class="n">5 s</td><td>How often each robot checks every cell on its own map.</td></tr>
+        <tr><td class="n">10%</td><td>A cell is finished at this much unknown or less.</td></tr>
+        <tr><td class="n">35%</td><td>A finished cell counts as unfinished again only above this.</td></tr>
+        <tr><td class="n">every cell</td><td>A robot is finished once every cell, except any written off, is at most 10% unknown on its own map. The first time is enough.</td></tr>
+        <tr><td class="n">60 s</td><td>Every robot waits this long at the start.</td></tr>
+        <tr><td class="n">300 s · 1 m</td><td>A robot also counts as finished after 300 s with nothing to plan and less than 1 m of driving …</td></tr>
+        <tr><td class="n">500</td><td>… or after 500 planning steps.</td></tr>
+        <tr><td class="n">3</td><td>Strikes before a cell is written off.</td></tr>
+      </tbody></table></div>
+      <div class="num-card"><h4>Choosing viewpoints</h4>
+      <p class="num-sub">A, PH and PC.</p>
+      <table class="nums"><tbody>
+        <tr><td class="n">2.5 m</td><td>Spacing of the grid of spots. A spot on each stretch of edge is added too.</td></tr>
+        <tr><td class="n">20 m</td><td>How far the rays reach when a robot works out what a spot would see: 629 rays all round, counted from 0.3 m. A spot may stand up to 20 m outside the cell, in a cell the robot may use.</td></tr>
+        <tr><td class="n">20 m²</td><td>A spot must see at least this much unknown inside the cell. Picking stops when no spot adds this much.</td></tr>
+        <tr><td class="n">12</td><td>The most viewpoints on one route.</td></tr>
+        <tr><td class="n">4 m</td><td>Spots closer than this to the robot are skipped.</td></tr>
+        <tr><td class="n">2.5 m · 180 s</td><td>“Just visited”: within 2.5 m of a viewpoint passed in the last 180 s.</td></tr>
+        <tr><td class="n">2 m · 240 s</td><td>“Failed before”: within 2 m of a viewpoint that failed in the last 240 s.</td></tr>
+        <tr><td class="n">10 m</td><td>“Teammate nearer”: within 10 m of a teammate’s goal, when that teammate is nearer to it.</td></tr>
+      </tbody></table></div>
+      <div class="num-card"><h4>Ordering and updating a route</h4>
+      <table class="nums"><tbody>
+        <tr><td class="n">1.25 m</td><td>A viewpoint this close to one on the old route keeps its old place in the order.</td></tr>
+        <tr><td class="n">10%</td><td>A fresh order replaces the old one only if at least this much shorter.</td></tr>
+        <tr><td class="n">1.25 m · 10%</td><td>After a pass, the new route is taken only if its first viewpoint moved more than 1.25 m or its length changed by more than 10%.</td></tr>
+        <tr><td class="n">1 s</td><td>How often the robot checks the next viewpoint, and drops it if less than 20 m² of what it was picked to see is still unknown. Blocked viewpoints are dropped as soon as they are seen.</td></tr>
+      </tbody></table></div>
+      <div class="num-card"><h4>Driving a route</h4>
+      <table class="nums"><tbody>
+        <tr><td class="n">2 m</td><td>The robot passes a viewpoint at this distance, without stopping.</td></tr>
+        <tr><td class="n">0.4 m</td><td>It stops this close to the last viewpoint …</td></tr>
+        <tr><td class="n">2 s</td><td>… and waits this long for its map to catch up.</td></tr>
+        <tr><td class="n">0.2 m in<br>15 s</td><td>Moving less than this fails the route.</td></tr>
+        <tr><td class="n">0.15 m/s<br>×3 · 30–180 s</td><td>Time limit for each leg, from its straight-line length (the first leg: its planned path, if longer). The clock restarts whenever the next viewpoint changes.</td></tr>
+      </tbody></table></div>
+    </div>
+  </div>
+  <div class="num-group">
+    <h3 class="num-h">Sharing out the cells <span>Part B</span></h3>
+    <div class="num-grid">
+      <div class="num-card"><h4>Stored lists</h4>
+      <p class="num-sub">PH and PC.</p>
+      <table class="nums"><tbody>
+        <tr><td class="n">12 · 8 · 6</td><td>Cells on each list with 2, 3 and 4 robots.</td></tr>
+        <tr><td class="n">51.2 s</td><td>Model time to cross one cell.</td></tr>
+        <tr><td class="n">1 s +<br>0.4 rad/s</td><td>Model time for each turn.</td></tr>
+        <tr><td class="n">2.56 s/m</td><td>Model time for the trip home.</td></tr>
+        <tr><td class="n">713 · 576 · 397 s</td><td>PH’s lists in the model, with 2, 3 and 4 robots.</td></tr>
+        <tr><td class="n">1 m</td><td>A robot with both lists done waits within this distance of home.</td></tr>
+      </tbody></table></div>
+      <div class="num-card"><h4>Contact-aware lists</h4>
+      <p class="num-sub">PC only.</p>
+      <table class="nums"><tbody>
+        <tr><td class="n">25%</td><td>PC looks only at splits that finish within this of the fastest.</td></tr>
+        <tr><td class="n">4.2 · 7.1 s</td><td>What 1 point of contact is worth, with 2 and 4 robots.</td></tr>
+        <tr><td class="n">751 · 429 s</td><td>PC’s lists in the model, with 2 and 4 robots.</td></tr>
+        <tr><td class="n">216</td><td>Equal splits for 3 robots. PH’s had the most contact already, so there is no PC with 3.</td></tr>
+      </tbody></table></div>
+    </div>
+  </div>
+  <div class="num-group">
+    <h3 class="num-h">Talking and driving <span>Part C · every arm</span></h3>
+    <div class="num-grid">
+      <div class="num-card"><h4>Hearing each other</h4>
+      <table class="nums"><tbody>
+        <tr><td class="n">1 s</td><td>Each robot sends a beacon every second.</td></tr>
+        <tr><td class="n">10 s</td><td>A teammate counts as present if its beacon arrived straight from it in the last 10 s.</td></tr>
+        <tr><td class="n">120 s</td><td>A map swap gives up after 120 s with no new data …</td></tr>
+        <tr><td class="n">600 s</td><td>… or after 600 s in total.</td></tr>
+      </tbody></table></div>
+      <div class="num-card"><h4>Driving home</h4>
+      <table class="nums"><tbody>
+        <tr><td class="n">1 m</td><td>A robot has reached home once it is this close.</td></tr>
+        <tr><td class="n">1.5–6 m</td><td>When the drive home gets stuck, the robot makes a short escape move of this length.</td></tr>
+        <tr><td class="n">600 s</td><td>The drive home gives up after this long.</td></tr>
+      </tbody></table></div>
+      <div class="num-card"><h4>Giving way</h4>
+      <p class="num-sub">On every drive, exploring included.</p>
+      <table class="nums"><tbody>
+        <tr><td class="n">1.5 m</td><td>A driving robot stops when a teammate it gives way to is moving this close.</td></tr>
+        <tr><td class="n">2.5 m</td><td>It drives on once that teammate is this far away …</td></tr>
+        <tr><td class="n">10 s</td><td>… or has stood still this long, at least 1.5 m away …</td></tr>
+        <tr><td class="n">120 s</td><td>… or after this long at most.</td></tr>
+        <tr><td class="n">30 s</td><td>After a 120 s stop, the same teammate can’t stop it again for this long, unless it moves.</td></tr>
+      </tbody></table></div>
+    </div>
+  </div>
+  <p class="note">The toys shrink a few of these to fit the screen. Part A: 0.5 m map squares, 6 m sight and rays, and a 60 × 40 m forest of six cells. Part D: its own simpler world, described under it. Toy robots drive at 0.44 m/s, about what the simulated robots manage.</p>
+</section>
+<pre id="dbg" hidden></pre>
+<footer class="foot"><b>Reconnection Planning V2</b><span>The toy scenes run in your browser. The measured results come from the full simulator runs.</span></footer>
+</div>
+<script>
+(function(){
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = id => document.getElementById(id);
+const DBG = [];
+const MONO = getComputedStyle(document.documentElement).getPropertyValue('--mono').trim() || 'monospace';
+// ---------- theme ----------
+let TK = {}, CC = {};
+const TOKS = ['bg','surface','surface-2','ink','muted','line','accent','link','tint','tree','no','r0','r1','r2','fog','unseen','cov','cov-edge','fr','fr-soft','bad','good','a-explore','a-trip','a-hold','a-chase','a-follow','a-wait','a-home','r3','a-help','a-search','done'];
+function readTokens(){ const cs = getComputedStyle(document.documentElement); TOKS.forEach(k => TK[k] = cs.getPropertyValue('--' + k).trim()); CC = {}; }
+readTokens();
+const pc = document.createElement('canvas'); pc.width = pc.height = 1;
+const pctx = pc.getContext('2d', {willReadFrequently: true});
+function mix(layers){ pctx.clearRect(0,0,1,1); for (const c of layers){ pctx.fillStyle = c; pctx.fillRect(0,0,1,1); } return Array.from(pctx.getImageData(0,0,1,1).data); }
+function rgbOf(name){ if (!CC[name]) CC[name] = mix([TK[name]]); return CC[name]; }
+function rgba(name, a){ const c = rgbOf(name); return `rgba(${c[0]},${c[1]},${c[2]},${a})`; }
+const redraws = [];
+function onTheme(){ readTokens(); toyCols = null; redraws.forEach(f => f()); }
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', onTheme);
+new MutationObserver(onTheme).observe(document.documentElement, {attributes: true, attributeFilter: ['data-theme']});
+let rsT; addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(() => redraws.forEach(f => f()), 90); });
+function setup(cv){ const d = Math.min(2, devicePixelRatio || 1); const w = cv.clientWidth, h = cv.clientHeight; const W = Math.max(1, Math.round(w*d)), H = Math.max(1, Math.round(h*d)); if (cv.width !== W || cv.height !== H){ cv.width = W; cv.height = H; } const ctx = cv.getContext('2d'); ctx.setTransform(d,0,0,d,0,0); return {ctx, w, h}; }
+function rng(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const fmtT = t => `${Math.floor(t)} s`;
+const hyp = Math.hypot;
+function label(ctx, text, x, y, o = {}){
+  ctx.font = `${o.weight || 500} ${o.size || 11}px ${MONO}`;
+  const w = ctx.measureText(text).width + 8, h = (o.size || 11) + 6;
+  let bx = o.align === 'right' ? x - w : o.align === 'center' ? x - w/2 : x;
+  const by = y - h/2;
+  ctx.fillStyle = o.bg || TK.surface; ctx.strokeStyle = o.edge || TK.line; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, w, h, 3) : ctx.rect(bx, by, w, h); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = o.color || TK.ink; ctx.textBaseline = 'middle'; ctx.fillText(text, bx + 4, y + 0.5);
+}
+function robotGlyph(ctx, x, y, color, ring, name, r = 6.5){
+  if (ring){ ctx.beginPath(); ctx.arc(x, y, r + 4, 0, 7); ctx.strokeStyle = ring; ctx.lineWidth = 3.5; ctx.stroke(); }
+  ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fillStyle = color; ctx.fill(); ctx.strokeStyle = TK.surface; ctx.lineWidth = 1.5; ctx.stroke();
+  if (name){ ctx.font = `600 12px ${MONO}`; ctx.fillStyle = color; ctx.textBaseline = 'middle'; ctx.fillText(name, x + r + 6, y - r - 3); }
+}
+function ghost(ctx, x, y, color, r = 6.5){ ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.setLineDash([3,2]); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]); }
+function logScroll(box, li){ if (!li) return; const top = li.offsetTop - box.offsetTop; if (top < box.scrollTop || top > box.scrollTop + box.clientHeight - li.offsetHeight) box.scrollTop = Math.max(0, top - box.clientHeight / 2); }
+
+// ---------- timeline player ----------
+function player(o){
+  let t = o.rest ?? 0, playing = false, last = 0, started = false, autoPaused = false;
+  o.scrub.min = 0; o.scrub.max = o.dur; o.scrub.step = 0.1;
+  const rows = [];
+  if (o.log){ o.log.innerHTML = ''; (o.events || []).forEach(ev => { const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.innerHTML = `<span class="lt">${fmtT(ev.t)}</span><span>${ev.text}</span>`; b.onclick = () => { pause(); t = Math.min(o.dur, ev.t + 0.5); render(); }; li.appendChild(b); o.log.appendChild(li); rows.push([ev.t, li]); }); }
+  let lastCur = -2;
+  function render(){ o.draw(t); o.scrub.value = t; o.clock.textContent = fmtT(t); let cur = -1; rows.forEach(([et, li], k) => { const p = et <= t; li.classList.toggle('past', p); if (p) cur = k; }); if (cur !== lastCur){ rows.forEach(([, li], k) => li.classList.toggle('now', k === cur)); if (cur >= 0) logScroll(o.log, rows[cur][1]); lastCur = cur; } }
+  function btn(){ o.play.textContent = playing ? 'Pause' : (t >= o.dur ? 'Replay' : 'Play'); }
+  function frame(ts){ if (!playing) return; const dt = Math.min(0.1, (ts - last) / 1000); last = ts; t = Math.min(o.dur, t + dt * o.speed); render(); if (t >= o.dur){ playing = false; btn(); return; } requestAnimationFrame(frame); }
+  function play(){ if (t >= o.dur) t = 0; playing = true; last = performance.now(); btn(); requestAnimationFrame(frame); }
+  function pause(){ playing = false; autoPaused = false; btn(); }
+  o.play.onclick = () => playing ? pause() : play();
+  o.scrub.oninput = () => { pause(); t = +o.scrub.value; render(); };
+  redraws.push(render);
+  if (!RM && 'IntersectionObserver' in window){
+    new IntersectionObserver(es => es.forEach(e => {
+      if (e.isIntersecting){ if (!started){ started = true; t = 0; play(); } else if (autoPaused){ autoPaused = false; play(); } }
+      else if (playing){ playing = false; autoPaused = true; btn(); }
+    }), {threshold: 0.3}).observe(o.observe);
+  }
+  render(); btn();
+  return {render};
+}
+
+/* =====================================================================
+   PART A — toy route planner (real rules, toy scale)
+   ===================================================================== */
+const TR = 0.5, TW = 120, TH = 80, TN = TW * TH, MW = 60, MH = 40;
+const TRUNK_R = 0.35, INF_R = TRUNK_R + 1.5, SENSE = 6, GAIN_R = 6, SPEED = 0.44, DT = 0.5;
+const STARTS = [[3, 3], [3, 7]];
+const trees = [];
+{ const r = rng(40); let tries = 0;
+  while (trees.length < 44 && tries < 8000){ tries++; const x = 2 + r() * 56, y = 2 + r() * 36;
+    if (STARTS.some(s => hyp(s[0]-x, s[1]-y) < 5)) continue;
+    if (trees.some(t => hyp(t.x-x, t.y-y) < 4.4)) continue;
+    trees.push({x, y}); } }
+function cellsInDisk(x, y, r){ const out = []; const i0 = Math.max(0, Math.floor((x-r)/TR)), i1 = Math.min(TW-1, Math.floor((x+r)/TR)), j0 = Math.max(0, Math.floor((y-r)/TR)), j1 = Math.min(TH-1, Math.floor((y+r)/TR));
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (hyp((i+.5)*TR - x, (j+.5)*TR - y) <= r) out.push(j*TW + i); return out; }
+const cellOf = (x, y) => Math.min(TH-1, Math.max(0, Math.floor(y/TR))) * TW + Math.min(TW-1, Math.max(0, Math.floor(x/TR)));
+const cx = c => (c % TW + .5) * TR, cy = c => ((c / TW | 0) + .5) * TR;
+const TREEOF = new Int16Array(TN).fill(-1);
+trees.forEach((t, k) => { cellsInDisk(t.x, t.y, TRUNK_R + 0.12).forEach(c => TREEOF[c] = k); TREEOF[cellOf(t.x, t.y)] = k; t.halo = cellsInDisk(t.x, t.y, INF_R); });
+const NRS = 180;
+function reveal(S, x, y){
+  for (let k = 0; k < NRS; k++){ const a = 2 * Math.PI * k / NRS, ca = Math.cos(a), sa = Math.sin(a);
+    for (let d = 0; d <= SENSE; d += 0.25){ const i = Math.floor((x + ca*d) / TR), j = Math.floor((y + sa*d) / TR);
+      if (i < 0 || j < 0 || i >= TW || j >= TH) break; const c = j*TW + i;
+      if (!S.known[c]){ S.known[c] = 1; S.nUnk--; }
+      const tk = TREEOF[c]; if (tk >= 0){ seeTree(S, tk); break; } } }
+}
+function seeTree(S, k){ if (S.seen[k]) return; S.seen[k] = 1; for (const c of trees[k].halo){ S.blk[c] = 1; if (!S.known[c]){ S.known[c] = 1; S.nUnk--; } } }
+function frontierMask(S){ const f = new Uint8Array(TN);
+  for (let c = 0; c < TN; c++){ if (!S.known[c] || S.blk[c]) continue; const i = c % TW, j = c / TW | 0;
+    if ((i > 0 && !S.known[c-1]) || (i < TW-1 && !S.known[c+1]) || (j > 0 && !S.known[c-TW]) || (j < TH-1 && !S.known[c+TW])) f[c] = 1; }
+  return f; }
+function candidatesOf(f){
+  const seen = new Uint8Array(TN), cands = []; let comp = 0;
+  for (let c0 = 0; c0 < TN; c0++){ if (!f[c0] || seen[c0]) continue;
+    const mem = [c0]; seen[c0] = 1;
+    for (let q = 0; q < mem.length; q++){ const c = mem[q], i = c % TW, j = c / TW | 0;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++){ if (!di && !dj) continue; const ii = i + di, jj = j + dj;
+        if (ii < 0 || jj < 0 || ii >= TW || jj >= TH) continue; const n = jj*TW + ii; if (f[n] && !seen[n]){ seen[n] = 1; mem.push(n); } } }
+    if (mem.length < 3){ comp++; continue; }
+    const bins = new Map();
+    for (const c of mem){ const key = Math.floor(cx(c)/5) + ',' + Math.floor(cy(c)/5); if (!bins.has(key)) bins.set(key, []); bins.get(key).push(c); }
+    for (const m of bins.values()){ let sx = 0, sy = 0; m.forEach(c => { sx += cx(c); sy += cy(c); }); sx /= m.length; sy /= m.length;
+      let bc = m[0], bd = 1e9; m.forEach(c => { const d = hyp(cx(c)-sx, cy(c)-sy); if (d < bd - 1e-9){ bd = d; bc = c; } });
+      cands.push({cell: bc, x: cx(bc), y: cy(bc), members: m, comp}); }
+    comp++; }
+  return cands; }
+function flood(S, x, y){
+  const dist = new Float64Array(TN).fill(Infinity), par = new Int32Array(TN).fill(-1), src = cellOf(x, y);
+  dist[src] = 0; const hk = [0], hv = [src];
+  const push = (k, v) => { hk.push(k); hv.push(v); let i = hk.length - 1; while (i > 0){ const p = (i-1) >> 1; if (hk[p] <= hk[i]) break; [hk[p], hk[i]] = [hk[i], hk[p]]; [hv[p], hv[i]] = [hv[i], hv[p]]; i = p; } };
+  const pop = () => { const k = hk[0], v = hv[0], lk = hk.pop(), lv = hv.pop(); if (hk.length){ hk[0] = lk; hv[0] = lv; let i = 0; for (;;){ const l = 2*i+1, r = l+1; let m = i; if (l < hk.length && hk[l] < hk[m]) m = l; if (r < hk.length && hk[r] < hk[m]) m = r; if (m === i) break; [hk[m], hk[i]] = [hk[i], hk[m]]; [hv[m], hv[i]] = [hv[i], hv[m]]; i = m; } } return [k, v]; };
+  while (hk.length){ const [d, c] = pop(); if (d > dist[c]) continue; const i = c % TW, j = c / TW | 0;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++){ if (!di && !dj) continue; const ii = i + di, jj = j + dj;
+      if (ii < 0 || jj < 0 || ii >= TW || jj >= TH) continue; const n = jj*TW + ii; if (S.blk[n] && (!S.blk[c] || (TREEOF[n] >= 0 && S.seen[TREEOF[n]]))) continue;
+      const nd = d + (di && dj ? TR * Math.SQRT2 : TR); if (nd < dist[n]){ dist[n] = nd; par[n] = c; push(nd, n); } } }
+  return {dist, par, src}; }
+function pathFrom(fl, goal){ const p = []; let c = goal; while (c !== -1 && c !== fl.src){ p.push(c); c = fl.par[c]; } p.reverse(); return p; }
+let toyCols = null;
+function toyColors(){ if (toyCols) return toyCols;
+  const F = mix([TK.surface]), U = mix([TK.unseen]), B = mix([TK.surface, TK.tree]), ink = mix([TK.ink]);
+  const T = B.map((v, i) => i < 3 ? Math.round(v * 0.45 + ink[i] * 0.55) : 255);
+  toyCols = {F, U, B, T}; return toyCols; }
+const toyOff = document.createElement('canvas'); toyOff.width = TW; toyOff.height = TH;
+const toyOctx = toyOff.getContext('2d');
+function paintToy(known, blk, seen){
+  const C = toyColors(), img = toyOctx.createImageData(TW, TH), d = img.data;
+  for (let j = 0; j < TH; j++) for (let i = 0; i < TW; i++){ const c = j*TW + i, o = ((TH - 1 - j) * TW + i) * 4;
+    const k = !known[c] ? C.U : (TREEOF[c] >= 0 && seen[TREEOF[c]]) ? C.T : blk[c] ? C.B : C.F;
+    d[o] = k[0]; d[o+1] = k[1]; d[o+2] = k[2]; d[o+3] = 255; }
+  toyOctx.putImageData(img, 0, 0); return toyOff; }
+function cellLayer(cells, colorRGB, alpha){ const img = toyOctx.createImageData(TW, TH), d = img.data, a = Math.round(alpha * 255);
+  for (const c of cells){ const i = c % TW, j = c / TW | 0, o = ((TH - 1 - j) * TW + i) * 4; d[o] = colorRGB[0]; d[o+1] = colorRGB[1]; d[o+2] = colorRGB[2]; d[o+3] = a; }
+  const cv = document.createElement('canvas'); cv.width = TW; cv.height = TH; cv.getContext('2d').putImageData(img, 0, 0); return cv; }
+function trailLine(ctx, tr, X, Y, color, a){ if (tr.length < 2) return; ctx.beginPath(); ctx.moveTo(X(tr[0][0]), Y(tr[0][1])); for (let k = 1; k < tr.length; k += 2) ctx.lineTo(X(tr[k][0]), Y(tr[k][1])); ctx.lineTo(X(tr[tr.length-1][0]), Y(tr[tr.length-1][1])); ctx.strokeStyle = rgba(color, a); ctx.lineWidth = 1.6; ctx.stroke(); }
+// six 20 m cells worked in list order; the list snakes 1 2 3 along the bottom row, 4 5 6 back along the top
+const CELL = 20, CCX = 3, NCELL = 6, CSQ = (CELL / TR) * (CELL / TR);
+const cellAt = (x, y) => Math.min(1, Math.max(0, Math.floor(y / CELL))) * CCX + Math.min(CCX - 1, Math.max(0, Math.floor(x / CELL)));
+const CELLOF = new Int8Array(TN); for (let c = 0; c < TN; c++) CELLOF[c] = cellAt(cx(c), cy(c));
+const LIST = [0, 1, 2, 5, 4, 3], NUM = k => LIST.indexOf(k) + 1;
+const SPACING = 2.5, MIN_SQ = Math.ceil(20 / (TR * TR) - 1e-6), MAX_WP = 12, IDENT = 0.5 * SPACING, REORDER = 0.10, PASS_R = 2, ARRIVE = 0.4, MIN_GOAL = 4;
+const NRV = Math.max(96, Math.ceil(2 * Math.PI * GAIN_R / TR));
+const LAT = []; for (let j = 0; j < MH / SPACING; j++) for (let i = 0; i < MW / SPACING; i++) LAT.push([(i + 0.5) * SPACING, (j + 0.5) * SPACING]);
+const pct = v => Math.round(v * 100) + '%';
+const m2 = n => Math.round(n * TR * TR);
+function boxDist(k, x, y){ const x0 = (k % CCX) * CELL, y0 = Math.floor(k / CCX) * CELL; return hyp(Math.max(x0 - x, 0, x - x0 - CELL), Math.max(y0 - y, 0, y - y0 - CELL)); }
+const navBudget = L => Math.min(180, Math.max(30, L / 0.15 * 3));
+// coverage rays: stop at blocked ground (trunk + safety ring), count unseen squares from 0.3 m out
+const VST = new Int32Array(TN); let vId = 0;
+function viewCells(S, x, y, keep){ vId++; const cells = [], ends = keep ? new Float32Array(NRV) : null;
+  for (let k = 0; k < NRV; k++){ const a = 2 * Math.PI * k / NRV, ca = Math.cos(a), sa = Math.sin(a); let end = GAIN_R;
+    for (let d = 0.3; d <= GAIN_R; d += 0.25){ const i = Math.floor((x + ca*d) / TR), j = Math.floor((y + sa*d) / TR);
+      if (i < 0 || j < 0 || i >= TW || j >= TH){ end = d; break; } const c = j*TW + i;
+      if (S.blk[c]){ end = d; break; }
+      if (!S.known[c] && VST[c] !== vId){ VST[c] = vId; cells.push(c); } }
+    if (keep) ends[k] = end; }
+  return {cells, ends}; }
+function logA(S, text){ S.log.push({t: S.t, text}); }
+function census(S){
+  const unk = new Int32Array(NCELL); for (let c = 0; c < TN; c++) if (!S.known[c]) unk[CELLOF[c]]++;
+  S.cells.forEach((C, k) => { C.uf = unk[k] / CSQ; if (C.wo) return;
+    if (!C.fin && C.uf <= 0.10){ C.fin = true; if (C.finT === null){ C.finT = S.t; logA(S, `Cell ${NUM(k)} finished: ${pct(C.uf)} of it still unknown.`); } }
+    else if (C.fin && C.uf > 0.35) C.fin = false; });
+  S.lastCensus = S.t;
+  if (!S.finished && S.cells.every(C => C.wo || C.uf <= 0.10)){ S.finished = true; S.finT = S.t; logA(S, 'Every cell is at most 10% unknown: R1 is finished and drives home.'); }
+}
+function newToy(){
+  const [sx, sy] = STARTS[0];
+  const S = {t: 0, known: new Uint8Array(TN), blk: new Uint8Array(TN), seen: new Uint8Array(trees.length), nUnk: TN,
+    cells: Array.from({length: NCELL}, () => ({uf: 1, fin: false, wo: false, finT: null})), lastCensus: -99, finished: false, finT: null, log: [], capture: null,
+    st: {routes: 0, passed: 0, replaced: 0, kept: 0, dropped: 0, failed: 0, goals: 0}};
+  S.r = {x: sx, y: sy, sx, sy, st: 'PLAN', route: null, goal: null, path: [], pi: 0, visited: [], failed: [], trail: [[sx, sy]],
+    wdT: 0, wdX: sx, wdY: sy, deadline: 0, pauseEnd: 0, nextPlan: 0, resT: 0, focus: -1, focusUf: 1, strikes: 0};
+  reveal(S, sx, sy); census(S); return S;
+}
+// the step's cells: first two unfinished list cells serve, the rest of the list breaks ties; any list cell may hold a viewpoint
+function stepCells(S){ const tour = LIST.filter(k => !S.cells[k].fin && !S.cells[k].wo);
+  return {tour, tiers: [tour.length ? tour[0] : -1, tour.length > 1 ? tour[1] : -1], later: [tour.slice(1), tour.slice(2)], cells: LIST}; }
+// ----- open route: nearest insertion, then 2-opt with the start fixed and the end open -----
+function openLen(o, cr, d){ if (!o.length) return 0; let L = cr[o[0]]; for (let k = 1; k < o.length; k++) L += d[o[k-1]][o[k]]; return L; }
+function cheapest(path, v, cr, d){ if (!path.length) return 0; let bp = 0, bc = Infinity;
+  for (let p = 0; p <= path.length; p++){ const c = p === 0 ? cr[v] + d[v][path[0]] - cr[path[0]] : p === path.length ? d[path[p-1]][v] : d[path[p-1]][v] + d[v][path[p]] - d[path[p-1]][path[p]];
+    if (c < bc - 1e-6){ bc = c; bp = p; } }
+  return bp; }
+function openOrder(cr, d){ const n = cr.length, inP = new Uint8Array(n), path = [];
+  for (let s = 0; s < n; s++){ let v = -1, best = Infinity;
+    for (let u = 0; u < n; u++){ if (inP[u]) continue; let du = cr[u]; for (const a of path) du = Math.min(du, d[a][u]); if (v < 0 || du < best){ best = du; v = u; } }
+    path.splice(cheapest(path, v, cr, d), 0, v); inP[v] = 1; }
+  const into = (i, node) => i === 0 ? cr[node] : d[path[i-1]][node];
+  for (let pass = 0; pass < 50; pass++){ let imp = false;
+    for (let i = 0; i + 1 < n; i++) for (let j = i + 1; j < n; j++){ const tail = j < n - 1;
+      const delta = into(i, path[j]) + (tail ? d[path[i]][path[j+1]] : 0) - into(i, path[i]) - (tail ? d[path[j]][path[j+1]] : 0);
+      if (delta < -1e-4){ let a = i, b = j; while (a < b){ const tmp = path[a]; path[a] = path[b]; path[b] = tmp; a++; b--; } imp = true; } }
+    if (!imp) break; }
+  return path; }
+// ----- one route build: spots, filters, coverage, greedy picks, order (legs between viewpoints are straight here) -----
+function buildRoute(S, r, step, prev, keep){
+  const fl = flood(S, r.x, r.y), fm = frontierMask(S), fr = candidatesOf(fm);
+  const inRange = (t, x, y) => step.tiers[t] >= 0 && boxDist(step.tiers[t], x, y) <= GAIN_R;
+  const pts = LAT.map(p => ({x: p[0], y: p[1], fr: false})); fr.forEach(f => pts.push({x: f.x, y: f.y, fr: true}));
+  const rej = {stand: 0, close: 0, map: 0, unreach: 0, visited: 0, failed: 0}, adm = [];
+  pts.forEach((q, k) => { q.k = k; q.c = cellOf(q.x, q.y); let v = null;
+    if (!step.cells.includes(cellAt(q.x, q.y)) || !(inRange(0, q.x, q.y) || inRange(1, q.x, q.y))) v = 'stand';
+    else if (hyp(q.x - r.x, q.y - r.y) < MIN_GOAL) v = 'close';
+    else if (!S.known[q.c] || S.blk[q.c]) v = 'map';
+    else if (!isFinite(fl.dist[q.c])) v = 'unreach';
+    else if (r.visited.some(o => S.t - o.t < 180 && hyp(o.x - q.x, o.y - q.y) < SPACING)) v = 'visited';
+    else if (r.failed.some(o => S.t - o.t < 240 && hyp(o.x - q.x, o.y - q.y) < 2)) v = 'failed';
+    q.v = v; if (v) rej[v]++; else adm.push(q); });
+  let tier = -1; const mem = [];
+  for (let t = 0; t < 2 && tier < 0; t++){ const T = step.tiers[t]; if (T < 0) continue; const later = new Set(step.later[t]);
+    for (const q of adm){ if (!inRange(t, q.x, q.y)) continue;
+      if (!q.vis) q.vis = viewCells(S, q.x, q.y, keep);
+      const a = [], b = []; for (const c of q.vis.cells){ const k = CELLOF[c]; if (k === T) a.push(c); else if (later.has(k)) b.push(c); }
+      q.nT = a.length; q.nL = b.length; q.tierOf = t;
+      if (a.length >= MIN_SQ){ q.member = true; mem.push({q, tier: a, later: b}); } }
+    if (mem.length) tier = t; }
+  const out = {pts, adm, rej, fl, fm, tier: tier + 1, served: tier >= 0 ? step.tiers[tier] : -1, mem, picks: [], wps: [], legs: [], len: 0, kept: false, matched: 0};
+  if (tier < 0) return out;
+  const cov = new Uint8Array(TN);
+  while (out.picks.length < MAX_WP){ let best = null, bt = -1, bl = -1;
+    for (const m of mem){ if (m.used) continue; let nt = 0, nl = 0; for (const c of m.tier) if (!cov[c]) nt++; for (const c of m.later) if (!cov[c]) nl++;
+      if (nt > bt || (nt === bt && nl > bl)){ best = m; bt = nt; bl = nl; } }
+    if (!best || bt < MIN_SQ) break;
+    best.used = true; const resid = best.tier.filter(c => !cov[c]), residL = keep ? best.later.filter(c => !cov[c]) : null;
+    best.tier.forEach(c => cov[c] = 1); best.later.forEach(c => cov[c] = 1);
+    out.picks.push({x: best.q.x, y: best.q.y, q: best.q, nT: bt, nL: bl, resid, residL, rank: out.picks.length}); }
+  const P = out.picks, n = P.length, cr = P.map(p => fl.dist[cellOf(p.x, p.y)]), d = P.map(a => P.map(b => hyp(a.x - b.x, a.y - b.y)));
+  let order = openOrder(cr, d);
+  if (prev && prev.length){
+    const pairs = []; prev.forEach((o, i) => P.forEach((p, v) => { const dd = hyp(o.x - p.x, o.y - p.y); if (dd <= IDENT) pairs.push([dd, i, v]); }));
+    pairs.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
+    const oldOf = new Array(n).fill(-1), used = new Uint8Array(prev.length);
+    for (const [, i, v] of pairs){ if (oldOf[v] >= 0 || used[i]) continue; oldOf[v] = i; used[i] = 1; out.matched++; }
+    if (out.matched){ const kept = [], rest = []; P.forEach((p, v) => oldOf[v] >= 0 ? kept.push([oldOf[v], v]) : rest.push([p.q.k, v]));
+      kept.sort((a, b) => a[0] - b[0]); rest.sort((a, b) => a[0] - b[0]);
+      const seed = kept.map(a => a[1]); rest.forEach(([, v]) => seed.splice(cheapest(seed, v, cr, d), 0, v));
+      if (!(openLen(order, cr, d) <= (1 - REORDER) * openLen(seed, cr, d))){ order = seed; out.kept = true; } } }
+  out.order = order; out.wps = order.map(v => P[v]);
+  out.legs = order.map((v, k) => k === 0 ? cr[v] : d[order[k-1]][v]); out.len = out.legs.reduce((a, b) => a + b, 0);
+  return out;
+}
+// ----- driving -----
+function newLeg(S, r){ r.wdT = S.t; r.wdX = r.x; r.wdY = r.y; }
+function setHead(S, r, fl){ const h = r.route.wps[0]; r.path = pathFrom(fl, cellOf(h.x, h.y)); r.pi = 0; r.deadline = S.t + navBudget(hyp(h.x - r.x, h.y - r.y)); }
+function endRoute(S, r, why){
+  const k = r.route.served, left = r.route.wps.length;
+  if (why === 'cell') logA(S, `Cell ${NUM(k)} is finished with ${left} viewpoint${left === 1 ? '' : 's'} left. The route ends, and R1 plans the next cell without stopping.`);
+  else logA(S, 'Nothing left worth seeing on the route: it ends, and R1 plans again.');
+  r.route = null; r.st = 'PLAN'; }
+function failHead(S, r, why){
+  const h = r.st === 'ROUTE' ? r.route.wps[0] : r.goal;
+  r.failed.push({x: h.x, y: h.y, t: S.t}); S.st.failed++;
+  logA(S, `${why === 'budget' ? 'Over its time limit' : 'Stuck: less than 0.2 m in 15 s'}. That ${r.st === 'ROUTE' ? 'viewpoint' : 'goal'} goes on the failed list, then a 2 s pause.`);
+  r.route = null; r.goal = null; r.st = 'PAUSE'; r.pauseEnd = S.t + 2; }
+function refresh(S, r, forced){
+  const R = r.route, P = buildRoute(S, r, R.step, R.wps, false);
+  if (!P.wps.length){ endRoute(S, r, 'exhausted'); return; }
+  let pub = forced, lrem = 0;
+  if (!pub){ const h = R.wps[0]; lrem = P.fl.dist[cellOf(h.x, h.y)]; for (let k = 1; k < R.wps.length; k++) lrem += hyp(R.wps[k].x - R.wps[k-1].x, R.wps[k].y - R.wps[k-1].y);
+    pub = !isFinite(lrem) || hyp(P.wps[0].x - h.x, P.wps[0].y - h.y) > IDENT || Math.abs(P.len - lrem) > REORDER * lrem; }
+  if (pub){ if (!forced) logA(S, `Passed a viewpoint. The new plan is clearly different (${Math.round(lrem)} m → ${Math.round(P.len)} m), so it replaces the route: ${P.wps.length} viewpoint${P.wps.length === 1 ? '' : 's'}${P.kept ? ', old order kept' : ''}.`);
+    R.wps = P.wps; R.served = P.served; if (!forced) S.st.replaced++; }
+  else S.st.kept++;
+  setHead(S, r, P.fl); }
+function walkGoal(S, r, why){
+  const cands = candidatesOf(frontierMask(S)); if (!cands.length) return false;
+  const fl = flood(S, r.x, r.y), tour = stepCells(S).tour; let best = null;
+  for (const c of cands){ c.cost = fl.dist[c.cell];
+    if (hyp(c.x - r.x, c.y - r.y) < MIN_GOAL || !S.known[c.cell] || S.blk[c.cell] || !isFinite(c.cost)) continue;
+    if (r.visited.some(o => S.t - o.t < 180 && hyp(o.x - c.x, o.y - c.y) < 6) || r.failed.some(o => S.t - o.t < 240 && hyp(o.x - c.x, o.y - c.y) < 2)) continue;
+    c.U = viewCells(S, c.x, c.y, false).cells.length * TR * TR / Math.sqrt(0.1 + c.cost);
+    const rk = tour.indexOf(CELLOF[c.cell]); c.rk = rk < 0 ? 99 : rk;
+    if (!best || c.rk < best.rk || (c.rk === best.rk && c.U > best.U)) best = c; }
+  if (!best) return false;
+  r.goal = {x: best.x, y: best.y, cell: best.cell}; r.path = pathFrom(fl, best.cell); r.pi = 0; r.st = 'GOAL'; newLeg(S, r); r.deadline = S.t + navBudget(hyp(best.x - r.x, best.y - r.y)); S.st.goals++;
+  logA(S, why); return true; }
+function goHomeA(S, r){ const fl = flood(S, r.x, r.y), hc = cellOf(r.sx, r.sy); if (!isFinite(fl.dist[hc])){ r.st = 'DONE'; return; } r.path = pathFrom(fl, hc); r.pi = 0; r.st = 'HOME'; r.goal = {x: cx(hc), y: cy(hc), cell: hc}; }
+function moveA(S, r){
+  let rem = SPEED * DT;
+  while (rem > 1e-6 && r.pi < r.path.length){ const c = r.path[r.pi], tx = cx(c), ty = cy(c), d = hyp(tx - r.x, ty - r.y);
+    if (d <= rem){ r.x = tx; r.y = ty; rem -= d; r.pi++; } else { r.x += (tx - r.x)/d*rem; r.y += (ty - r.y)/d*rem; rem = 0; } }
+  r.trail.push([r.x, r.y]); reveal(S, r.x, r.y);
+  const tg = r.st === 'ROUTE' ? r.route.wps[0] : r.goal, tc = cellOf(tg.x, tg.y);
+  if (S.blk[tc]) return;
+  let bad = false; if (!S.blk[cellOf(r.x, r.y)]) for (let k = r.pi; k < r.path.length; k++) if (S.blk[r.path[k]]){ bad = true; break; }
+  if (bad){ const fl = flood(S, r.x, r.y); r.path = isFinite(fl.dist[tc]) ? pathFrom(fl, tc) : []; r.pi = 0; }
+}
+function toyStepA(S){
+  S.t += DT; const r = S.r;
+  if (S.t - S.lastCensus >= 5) census(S);
+  if (r.st === 'DONE') return;
+  if (r.st === 'PAUSE'){ if (S.t >= r.pauseEnd) r.st = 'PLAN'; return; }
+  if (r.st === 'PLAN'){
+    if (S.finished){ goHomeA(S, r); return; }
+    if (S.t < r.nextPlan) return;
+    const step = stepCells(S);
+    if (step.tiers[0] >= 0){
+      const P = buildRoute(S, r, step, null, !!S.capture);
+      if (S.capture) S.capture(S, r, step, P);
+      if (P.wps.length){
+        const f = P.served, uf = S.cells[f].uf;
+        if (f === r.focus && uf >= r.focusUf - 1e-9) r.strikes++; else r.strikes = 0;
+        r.focus = f; r.focusUf = uf;
+        if (r.strikes >= 3){ census(S); r.strikes = 0; r.focus = -1;
+          if (!S.cells[f].fin && S.cells[f].uf < 0.999){ S.cells[f].wo = true; logA(S, `Cell ${NUM(f)} written off: three routes in a row left its unknown where it was.`); return; } }
+        r.route = {step, wps: P.wps, served: f}; S.st.routes++; r.st = 'ROUTE'; r.resT = S.t; newLeg(S, r); setHead(S, r, P.fl);
+        logA(S, `Route for cell ${NUM(f)}${P.tier === 2 ? ` (no spot sees 20 m² of cell ${NUM(step.tiers[0])}, so the next cell)` : ''}: ${P.wps.length} viewpoint${P.wps.length === 1 ? '' : 's'}, ${Math.round(P.len)} m.`);
+        return; } }
+    if (walkGoal(S, r, step.tiers[0] >= 0 ? `No spot sees 20 m² of cell ${NUM(step.tiers[0])}${step.tiers[1] >= 0 ? ` or cell ${NUM(step.tiers[1])}` : ''}: one goal instead, V1’s way.` : 'Every cell on the list is finished, but the map isn’t: one goal at a time to fill holes.')) return;
+    r.nextPlan = S.t + 2; return; }
+  moveA(S, r);
+  if (r.st === 'HOME'){ if (hyp(r.x - r.sx, r.y - r.sy) <= 1 || r.pi >= r.path.length){ r.st = 'DONE'; logA(S, 'Home.'); } return; }
+  if (r.st === 'ROUTE'){ const R = r.route;
+    if (R.wps.length > 1 && hyp(R.wps[0].x - r.x, R.wps[0].y - r.y) <= PASS_R){ const h = R.wps.shift(); r.visited.push({x: h.x, y: h.y, t: S.t}); S.st.passed++; newLeg(S, r); refresh(S, r, false); if (!r.route) return; }
+    if (S.cells[R.served].fin){ endRoute(S, r, 'cell'); return; }
+    const n0 = R.wps.length; R.wps = R.wps.filter(w => !S.blk[cellOf(w.x, w.y)]);
+    if (R.wps.length < n0){ S.st.dropped += n0 - R.wps.length; logA(S, 'Dropped a viewpoint: it turned out to be blocked.'); if (!R.wps.length) endRoute(S, r, 'exhausted'); else refresh(S, r, true); return; }
+    if (S.t - r.resT >= 1){ r.resT = S.t; let left = 0; for (const c of R.wps[0].resid) if (!S.known[c]) left++;
+      if (left < MIN_SQ){ R.wps.shift(); S.st.dropped++; logA(S, `Dropped the next viewpoint: only ${m2(left)} m² of what it was picked to see is still unknown.`); if (!R.wps.length) endRoute(S, r, 'exhausted'); else refresh(S, r, true); return; } }
+    const h = R.wps[0];
+    if (R.wps.length === 1 && hyp(h.x - r.x, h.y - r.y) <= ARRIVE){ r.visited.push({x: h.x, y: h.y, t: S.t}); S.st.passed++; logA(S, 'Reached the last viewpoint: R1 stops and waits 2 s for its map to catch up.'); r.route = null; r.st = 'PAUSE'; r.pauseEnd = S.t + 2; return; } }
+  else if (r.st === 'GOAL'){
+    if (S.blk[r.goal.cell]){ r.goal = null; r.st = 'PLAN'; return; }
+    if (r.pi >= r.path.length && hyp(r.goal.x - r.x, r.goal.y - r.y) <= ARRIVE){ r.visited.push({x: r.goal.x, y: r.goal.y, t: S.t}); r.goal = null; r.st = 'PAUSE'; r.pauseEnd = S.t + 2; return; } }
+  if (S.t > r.deadline){ failHead(S, r, 'budget'); return; }
+  if (S.t - r.wdT >= 15){ if (hyp(r.x - r.wdX, r.y - r.wdY) < 0.2){ failHead(S, r, 'stuck'); return; } newLeg(S, r); }
+}
+
+// ----- shared drawing -----
+function cellGrid(ctx, w, h, cells){
+  const s = w / MW;
+  if (cells) cells.forEach((C, k) => { const x0 = (k % CCX) * CELL, y0 = Math.floor(k / CCX) * CELL, X0 = x0 * s, Y0 = h - (y0 + CELL) * s;
+    if (C.fin){ ctx.fillStyle = TK.cov; ctx.fillRect(X0, Y0, CELL * s, CELL * s); }
+    if (C.wo){ ctx.fillStyle = rgba('muted', 0.18); ctx.fillRect(X0, Y0, CELL * s, CELL * s); } });
+  ctx.strokeStyle = rgba('ink', 0.45); ctx.lineWidth = 1;
+  for (let x = CELL; x < MW; x += CELL){ ctx.beginPath(); ctx.moveTo(x * s, 0); ctx.lineTo(x * s, h); ctx.stroke(); }
+  for (let y = CELL; y < MH; y += CELL){ ctx.beginPath(); ctx.moveTo(0, h - y * s); ctx.lineTo(w, h - y * s); ctx.stroke(); }
+  for (let k = 0; k < NCELL; k++){ const x0 = (k % CCX) * CELL, y0 = Math.floor(k / CCX) * CELL; label(ctx, 'cell ' + NUM(k), x0 * s + 4, h - (y0 + CELL) * s + 11, {size: 10, color: TK.muted}); }
+}
+function cellBox(ctx, w, h, k, color, dash, inset){ const s = w / MW, x0 = (k % CCX) * CELL, y0 = Math.floor(k / CCX) * CELL, i = inset || 1.5;
+  ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.setLineDash(dash || []); ctx.strokeRect(x0 * s + i, h - (y0 + CELL) * s + i, CELL * s - 2 * i, CELL * s - 2 * i); ctx.setLineDash([]); }
+function cross(ctx, px, py, col){ ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px-4, py-4); ctx.lineTo(px+4, py+4); ctx.moveTo(px+4, py-4); ctx.lineTo(px-4, py+4); ctx.stroke(); }
+function routeLine(ctx, X, Y, from, wps, path, pi, color){
+  ctx.beginPath(); ctx.moveTo(X(from[0]), Y(from[1]));
+  if (path) for (let k = pi; k < path.length; k += 2) ctx.lineTo(X(cx(path[k])), Y(cy(path[k])));
+  wps.forEach(p => ctx.lineTo(X(p.x), Y(p.y)));
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.setLineDash([0.1, 5]); ctx.stroke(); ctx.setLineDash([]); ctx.lineCap = 'butt';
+  ctx.beginPath(); ctx.moveTo(X(from[0]), Y(from[1])); if (path) for (let k = pi; k < path.length; k += 2) ctx.lineTo(X(cx(path[k])), Y(cy(path[k]))); wps.forEach(p => ctx.lineTo(X(p.x), Y(p.y)));
+  ctx.strokeStyle = rgba('r0', 0.25); ctx.lineWidth = 1; ctx.stroke();
+  wps.forEach((p, k) => { const px = X(p.x), py = Y(p.y); ctx.fillStyle = color; ctx.strokeStyle = TK.surface; ctx.lineWidth = 1.5;
+    if (k === wps.length - 1){ ctx.fillRect(px - 5, py - 5, 10, 10); ctx.strokeRect(px - 5, py - 5, 10, 10); } else { ctx.beginPath(); ctx.arc(px, py, 4.5, 0, 7); ctx.fill(); ctx.stroke(); } });
+}
+
+// ----- A1: find a telling first build in a headless run -----
+let SNAP = null;
+{ const S = newToy(), t0 = performance.now(); let bestScore = -1, builds = 0;
+  S.capture = (S, r, step, P) => { builds++;
+    if (!P.wps.length || S.t < 40 || P.tier !== 1) return;
+    const reasons = new Set(P.pts.filter(q => q.v && q.v !== 'stand').map(q => q.v));
+    const score = reasons.size * 6 + Math.min(P.picks.length, 5) * 4 + (P.tier === 1 ? 3 : 0) + (S.t > 80 ? 2 : 0) + (step.tiers[1] >= 0 ? 1 : 0);
+    if (score > bestScore){ bestScore = score;
+      SNAP = {t: S.t, known: S.known.slice(), blk: S.blk.slice(), seen: S.seen.slice(), rx: r.x, ry: r.y, trail: r.trail.slice(),
+        visited: r.visited.filter(v => S.t - v.t < 180).map(v => ({...v})), failed: r.failed.filter(f => S.t - f.t < 240).map(f => ({...f})),
+        cells: S.cells.map(c => ({...c})), step, P, wps: P.wps.slice(), legs: P.legs.slice()}; } };
+  let g = 0; while (S.t < 330 && g++ < 1000) toyStepA(S);
+  DBG.push(`A1: prerun ${Math.round(performance.now() - t0)} ms, ${builds} step builds, snapshot t=${SNAP && SNAP.t} score=${bestScore} tier=${SNAP && SNAP.P.tier} picks=${SNAP && SNAP.P.picks.length} adm=${SNAP && SNAP.P.adm.length} members=${SNAP && SNAP.P.mem.length} rej=${SNAP && JSON.stringify(SNAP.P.rej)}`);
+  DBG.push('A1: prerun log ' + S.log.map(e => Math.round(e.t) + ' ' + e.text).join(' | '));
+}
+
+(function(){
+  if (!SNAP) return;
+  const s = SNAP, P = s.P, cv = $('a1c'), F = P.served, F2 = s.step.tiers[P.tier === 1 ? 1 : 0], NF = NUM(F);
+  const isNext = P.tier === 1 && F2 >= 0;
+  const band = []; for (let c = 0; c < TN; c++){ const x = cx(c), y = cy(c); if (boxDist(s.step.tiers[0], x, y) <= GAIN_R || (s.step.tiers[1] >= 0 && boxDist(s.step.tiers[1], x, y) <= GAIN_R)) band.push(c); }
+  const inBand = P.pts.filter(q => q.v !== 'stand'), sweep = P.adm.filter(q => q.tierOf === P.tier - 1 && q.vis).sort((a, b) => a.x - b.x || a.y - b.y);
+  const members = sweep.filter(q => q.member).sort((a, b) => b.nT - a.nT || a.k - b.k);
+  const LET = new Map(); members.slice().sort((a, b) => a.x - b.x || a.y - b.y).forEach((q, k) => LET.set(q, k < 26 ? String.fromCharCode(65 + k) : k < 52 ? String.fromCharCode(71 + k) : '#' + k));
+  const unkF = Math.round(s.cells[F].uf * CSQ * TR * TR), covF = P.picks.reduce((a, p) => a + p.nT, 0);
+  const RS = [['close', 'Too close: under 4 m from R1'], ['map', 'Not known free: unseen or blocked ground'], ['unreach', 'Can’t reach'], ['visited', 'Just visited: within 2.5 m, last 180 s'], ['failed', 'Failed before: within 2 m, last 240 s']];
+  const nextTxt = isNext ? `, and cell ${NUM(F2)} is the next one` : '';
+  const STEPS = [
+    {h: 'Which cell, and where a viewpoint may stand', dur: 7, p: `R1’s map ${Math.round(s.t)} s into the toy run below. R1 works down a list of six cells. Cell ${NF} is the first one not finished (${pct(s.cells[F].uf)} of it unknown), so this route serves it${nextTxt}. Spots for viewpoints are a grid every 2.5 m, plus one on each stretch of edge between free and unseen ground. A spot may stand in any cell on the list, but only within ${GAIN_R} m of ${s.step.tiers[1] >= 0 ? 'these two cells' : 'this cell'} (shaded): ${inBand.length} of ${P.pts.length} spots.`},
+    {h: 'Rule spots out', dur: 7, p: `Each spot must pass the same checks as a goal in V1, in this order: not under 4 m from the robot, on ground known to be free, reachable, not just visited, not failed before, and not within 10 m of a teammate’s goal when that teammate is nearer (there is no teammate here). The rings show the checks: 4 m around R1, 2.5 m around viewpoints it passed in the last 180 s${s.failed.length ? ', 2 m around ones that failed' : ''}. ${P.adm.length} spots pass (filled dots).`},
+    {h: 'What each spot would see in the cell', dur: 22, p: `From each spot that passed, rays go out ${GAIN_R} m and stop at blocked ground, a trunk or its safety ring. Only unseen ground counts, and only inside cell ${NF}${isNext ? `, with cell ${NUM(F2)} and later ones kept to break ties` : ''}. A spot is worth a viewpoint only if it would see at least 20 m² inside cell ${NF}: ${members.length} spots do, lettered on the map.`},
+    {h: 'Pick viewpoints, most new ground first', dur: 14, p: `R1 takes the spot that sees the most unseen ground in cell ${NF}, counts that ground as covered, and repeats with what is left. A tie goes to the spot that sees more of the later cells. It stops when no spot adds 20 m², or at 12 viewpoints. Here: ${P.picks.length} viewpoints, covering ${m2(covF)} m² of the cell’s ${unkF} m² unseen.`},
+    {h: 'Put them in a short order, then drive', dur: 10, p: `The order starts at R1. Each viewpoint goes in where it adds the least length, then any crossing legs are untangled. Route: ${s.wps.length} viewpoints, ${Math.round(s.legs.reduce((a, b) => a + b, 0))} m. R1 drives through without stopping, passing each viewpoint at 2 m (the rings), and plans again after each pass. It stops only at the last one (the square), then waits 2 s.`}
+  ];
+  let ns = STEPS.length - 1, nu = 1, playing = false, last = 0, started = false, lastTbl = '';
+  const dots = $('a1dots'); STEPS.forEach((st, k) => { const li = document.createElement('li'); const b = document.createElement('button'); b.type = 'button'; b.textContent = k + 1; b.title = st.h; b.onclick = () => { stop(); ns = k; nu = 1; render(); }; li.appendChild(b); dots.appendChild(li); });
+  const rows = (head, body) => `<thead><tr>${head.map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>${body}</tbody>`;
+  function table(){
+    let key = ns + ':', html = '';
+    if (ns === 0){ html = rows(['Cell', 'Unknown', 'State'], LIST.map(k => { const C = s.cells[k], role = k === F ? 'this route' : (isNext && k === F2) ? 'next' : C.fin ? 'finished' : 'to do';
+      return `<tr${k === F ? ' class="cur"' : ''}><td>cell ${NUM(k)}</td><td>${pct(C.uf)}</td><td class="${k === F ? 'v-goal' : ''}">${role}</td></tr>`; }).join('')); }
+    else if (ns === 1){ html = rows(['Check', 'Spots ruled out'], `<tr><td>Outside the shaded band</td><td>${P.rej.stand}</td></tr>` + RS.map(([k, t]) => `<tr><td>${t}</td><td class="${P.rej[k] ? 'v-skip' : ''}">${P.rej[k]}</td></tr>`).join('') + `<tr><td>Pass every check</td><td class="v-goal">${P.adm.length}</td></tr>`); }
+    else if (ns === 2){ const k = Math.min(sweep.length, Math.floor(nu * sweep.length + (nu >= 1 ? 1 : 0))), shown = new Set(sweep.slice(0, k)); key += k;
+      const list = sweep.slice().sort((a, b) => b.nT - a.nT || a.k - b.k);
+      html = rows(['Spot', `Cell ${NF} m²`, 'Later m²', '≥ 20 m²'], list.map(q => { const on = shown.has(q); return `<tr${q === sweep[k - 1] && nu < 1 ? ' class="cur"' : ''}><td>${LET.get(q) || '·'}</td><td>${on ? m2(q.nT) : '–'}</td><td>${on ? m2(q.nL) : '–'}</td><td class="${on ? (q.member ? 'v-goal' : 'v-skip') : ''}">${on ? (q.member ? 'yes' : 'no') : ''}</td></tr>`; }).join('')); }
+    else if (ns === 3){ const k = Math.min(P.picks.length, Math.floor(nu * P.picks.length) + 1); key += k;
+      html = rows(['Pick', 'Spot', `New m² in cell ${NF}`, 'New m² later'], P.picks.map((p, i) => `<tr${i === k - 1 && nu < 1 ? ' class="cur"' : ''}><td>${i + 1}</td><td>${i < k ? LET.get(p.q) : '–'}</td><td>${i < k ? m2(p.nT) : '–'}</td><td>${i < k ? m2(p.nL) : '–'}</td></tr>`).join('')); }
+    else { html = rows(['Order', 'Spot', 'Pick', 'Leg m'], s.wps.map((p, i) => `<tr><td>${i + 1}${i === s.wps.length - 1 ? ' (stop)' : ''}</td><td>${LET.get(p.q)}</td><td>${p.rank + 1}</td><td>${s.legs[i].toFixed(1)}</td></tr>`).join('')); }
+    if (key !== lastTbl){ $('a1t').innerHTML = html; lastTbl = key; }
+  }
+  function draw(){
+    const {ctx, w, h} = setup(cv), sc = w / MW, X = v => v * sc, Y = v => h - v * sc;
+    ctx.clearRect(0, 0, w, h); ctx.imageSmoothingEnabled = false; ctx.drawImage(paintToy(s.known, s.blk, s.seen), 0, 0, w, h);
+    if (ns === 0) ctx.drawImage(cellLayer(band, rgbOf('fr'), 0.16), 0, 0, w, h);
+    cellGrid(ctx, w, h, s.cells);
+    cellBox(ctx, w, h, F, TK.r0);
+    if (isNext) cellBox(ctx, w, h, F2, rgba('r0', 0.7), [6, 4], 4);
+    trailLine(ctx, s.trail, X, Y, 'r0', 0.5);
+    const ring = (x0, y0, r, col) => { ctx.beginPath(); ctx.arc(X(x0), Y(y0), r * sc, 0, 7); ctx.setLineDash([4, 3]); ctx.strokeStyle = col; ctx.lineWidth = 1.3; ctx.stroke(); ctx.setLineDash([]); };
+    if (ns === 1){ ring(s.rx, s.ry, MIN_GOAL, rgba('ink', 0.55)); s.visited.forEach(v => ring(v.x, v.y, SPACING, rgba('r0', 0.6))); s.failed.forEach(f => ring(f.x, f.y, 2, TK.bad)); }
+    s.visited.forEach(v => { ctx.beginPath(); ctx.arc(X(v.x), Y(v.y), 3, 0, 7); ctx.strokeStyle = rgba('r0', 0.8); ctx.lineWidth = 1.3; ctx.stroke(); });
+    s.failed.forEach(f => cross(ctx, X(f.x), Y(f.y), TK.bad));
+    if (ns === 2){ const k = Math.min(sweep.length - 1, Math.floor(nu * sweep.length)), q = sweep[k];
+      if (nu < 1 && q){ const T = F, inT = [], inL = []; const later = new Set(s.step.later[P.tier - 1]);
+        q.vis.cells.forEach(c => { if (CELLOF[c] === T) inT.push(c); else if (later.has(CELLOF[c])) inL.push(c); });
+        ctx.drawImage(cellLayer(inL, rgbOf('fr'), 0.3), 0, 0, w, h); ctx.drawImage(cellLayer(inT, rgbOf('fr'), 0.85), 0, 0, w, h);
+        ctx.strokeStyle = rgba('fr', 0.35); ctx.lineWidth = 1; ctx.beginPath();
+        for (let i = 0; i < NRV; i += 2){ const a = 2 * Math.PI * i / NRV; ctx.moveTo(X(q.x), Y(q.y)); ctx.lineTo(X(q.x + Math.cos(a) * q.vis.ends[i]), Y(q.y + Math.sin(a) * q.vis.ends[i])); } ctx.stroke(); } }
+    if (ns === 3){ const k = Math.min(P.picks.length, Math.floor(nu * P.picks.length) + 1);
+      P.picks.slice(0, k).forEach((p, i) => { ctx.drawImage(cellLayer(p.resid, rgbOf(i % 2 ? 'r0' : 'fr'), i === k - 1 && nu < 1 ? 0.85 : 0.5), 0, 0, w, h); }); }
+    // spots
+    const spot = (q, r, fill, edge) => { ctx.beginPath(); ctx.arc(X(q.x), Y(q.y), r, 0, 7); if (fill){ ctx.fillStyle = fill; ctx.fill(); } if (edge){ ctx.strokeStyle = edge; ctx.lineWidth = 1.2; ctx.stroke(); } };
+    if (ns === 0) P.pts.forEach(q => q.v === 'stand' ? spot(q, 1.6, rgba('muted', 0.45)) : spot(q, 2.6, TK.fr));
+    if (ns === 1) inBand.forEach(q => q.v ? spot(q, 2.4, null, rgba('muted', 0.8)) : spot(q, 3, TK.fr, TK.surface));
+    if (ns === 2){ const k = Math.floor(nu * sweep.length + (nu >= 1 ? 1 : 0)); P.adm.forEach(q => spot(q, 2.4, rgba('fr', 0.35)));
+      sweep.slice(0, k).forEach(q => q.member ? spot(q, 4, TK.fr, TK.surface) : spot(q, 2.4, null, rgba('muted', 0.9)));
+      if (nu >= 1) members.forEach(q => label(ctx, LET.get(q), X(q.x) + 5, Y(q.y) - 7, {size: 9})); }
+    if (ns === 3){ const k = Math.min(P.picks.length, Math.floor(nu * P.picks.length) + 1); members.forEach(q => spot(q, 2.6, rgba('fr', 0.5)));
+      P.picks.slice(0, k).forEach((p, i) => { spot(p, 5, TK.fr, TK.surface); label(ctx, `${i + 1} · ${LET.get(p.q)} +${m2(p.nT)} m²`, X(p.x) + 7, Y(p.y) - 9, {size: 10}); }); }
+    if (ns === 4){ const n = Math.max(1, Math.ceil(nu * s.wps.length)), shown = s.wps.slice(0, n);
+      routeLine(ctx, X, Y, [s.rx, s.ry], shown, null, 0, TK.r0);
+      shown.forEach((p, i) => { if (i < s.wps.length - 1) { ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), PASS_R * sc, 0, 7); ctx.setLineDash([3, 3]); ctx.strokeStyle = rgba('r0', 0.55); ctx.lineWidth = 1.2; ctx.stroke(); ctx.setLineDash([]); }
+        label(ctx, String(i + 1), X(p.x) + 7, Y(p.y) - 9, {size: 10, color: TK.r0}); }); }
+    robotGlyph(ctx, X(s.rx), Y(s.ry), TK.r0, null, 'R1');
+  }
+  function render(){ const st = STEPS[ns]; $('a1k').textContent = `Step ${ns + 1} of ${STEPS.length}`; $('a1h').textContent = st.h; $('a1p').textContent = st.p;
+    [...dots.querySelectorAll('button')].forEach((b, k) => b.classList.toggle('on', k === ns));
+    $('a1back').disabled = ns === 0; $('a1next').disabled = ns === STEPS.length - 1;
+    draw(); table(); }
+  function frame(ts){ if (!playing) return; const dt = Math.min(0.1, (ts - last) / 1000); last = ts; nu += dt / STEPS[ns].dur;
+    if (nu >= 1){ if (ns < STEPS.length - 1){ ns++; nu = 0; } else { nu = 1; playing = false; } }
+    render(); btn(); if (playing) requestAnimationFrame(frame); }
+  function btn(){ $('a1play').textContent = playing ? 'Pause' : 'Play'; }
+  function stop(){ playing = false; btn(); }
+  $('a1play').onclick = () => { if (playing){ stop(); return; } if (ns === STEPS.length - 1 && nu >= 1) ns = 0; nu = nu >= 1 ? 0 : nu; playing = true; last = performance.now(); btn(); requestAnimationFrame(frame); };
+  $('a1back').onclick = () => { stop(); ns = Math.max(0, ns - 1); nu = 1; render(); };
+  $('a1next').onclick = () => { stop(); ns = Math.min(STEPS.length - 1, ns + 1); nu = 1; render(); };
+  redraws.push(render); render();
+  if (!RM && 'IntersectionObserver' in window) new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && !started){ started = true; ns = 0; nu = 0; playing = true; last = performance.now(); btn(); requestAnimationFrame(frame); } }), {threshold: 0.4}).observe(cv);
+})();
+
+// ----- A2: the running sweep -----
+(function(){
+  const cv = $('a2c'), logEl = $('a2log');
+  let S = newToy(), playing = false, last = 0, started = false, acc = 0, shown = 0;
+  const ST = {PLAN: 'planning', ROUTE: 'driving a route', GOAL: 'driving to a single goal', PAUSE: 'stopped for 2 s', HOME: 'driving home', DONE: 'home'};
+  const BOARD = [3, 4, 5, 0, 1, 2];
+  function syncLog(){ if (shown > S.log.length){ logEl.innerHTML = ''; shown = 0; }
+    for (; shown < S.log.length; shown++){ const e = S.log[shown], li = document.createElement('li'); li.innerHTML = `<span class="lt">${fmtT(e.t)}</span><span>${e.text}</span>`; logEl.appendChild(li); }
+    logEl.scrollTop = logEl.scrollHeight; }
+  function draw(){
+    const r = S.r, {ctx, w, h} = setup(cv), sc = w / MW, X = v => v * sc, Y = v => h - v * sc;
+    ctx.clearRect(0, 0, w, h); ctx.imageSmoothingEnabled = false; ctx.drawImage(paintToy(S.known, S.blk, S.seen), 0, 0, w, h);
+    cellGrid(ctx, w, h, S.cells);
+    if (r.route) cellBox(ctx, w, h, r.route.served, TK.r0);
+    trailLine(ctx, r.trail, X, Y, 'r0', 0.45);
+    r.visited.forEach(v => { if (S.t - v.t < 180){ ctx.beginPath(); ctx.arc(X(v.x), Y(v.y), 3, 0, 7); ctx.strokeStyle = rgba('r0', 0.8); ctx.lineWidth = 1.3; ctx.stroke(); } });
+    r.failed.forEach(f => { if (S.t - f.t < 240) cross(ctx, X(f.x), Y(f.y), TK.bad); });
+    if (r.st === 'ROUTE' && r.route) routeLine(ctx, X, Y, [r.x, r.y], r.route.wps, r.path, r.pi, TK.r0);
+    if ((r.st === 'GOAL' || r.st === 'HOME') && r.goal){ ctx.beginPath(); ctx.moveTo(X(r.x), Y(r.y)); for (let k = r.pi; k < r.path.length; k += 2) ctx.lineTo(X(cx(r.path[k])), Y(cy(r.path[k]))); ctx.lineTo(X(r.goal.x), Y(r.goal.y));
+      ctx.strokeStyle = rgba('r0', 0.9); ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(X(r.goal.x), Y(r.goal.y), 4.5, 0, 7); ctx.fillStyle = TK.fr; ctx.fill(); }
+    robotGlyph(ctx, X(r.x), Y(r.y), TK.r0, null, 'R1');
+    $('a2clock').textContent = fmtT(S.t);
+    $('a2board').innerHTML = BOARD.map(k => { const C = S.cells[k], cur = r.route && r.route.served === k;
+      return `<div class="${C.fin ? 'fin' : ''}${cur ? ' cur' : ''}${C.wo ? ' wo' : ''}"><b>Cell ${NUM(k)}</b>${pct(C.uf)} unknown<span>${C.wo ? 'written off' : C.fin ? 'finished' : cur ? 'on the route' : 'to do'}</span></div>`; }).join('');
+    const t = S.st, what = r.st === 'ROUTE' && r.route ? `driving a route through cell ${NUM(r.route.served)}: ${r.route.wps.length} viewpoint${r.route.wps.length === 1 ? '' : 's'} left` : ST[r.st];
+    $('a2state').innerHTML = `<div class="row"><span class="who" style="color:var(--r0)">R1</span><span>${what}</span></div>` +
+      `<div class="row"><span class="chip">${t.routes} routes</span><span class="chip">${t.passed} viewpoints passed</span><span class="chip">${t.goals} single goals</span></div>` +
+      `<div class="row"><span>After a pass:</span><span class="chip">${t.replaced} replaced</span><span class="chip">${t.kept} kept</span></div>` +
+      `<div class="row"><span class="chip">${t.dropped} viewpoints dropped</span><span class="chip">${t.failed} failed</span></div>` +
+      `<div class="row"><span class="who">Finished</span><span>${S.finished ? 'at ' + Math.round(S.finT) + ' s' : 'not yet'}</span></div>`;
+    syncLog();
+  }
+  const over = () => S.r.st === 'DONE' || S.t > 3000;
+  function frame(ts){ if (!playing) return; const dt = Math.min(0.1, (ts - last) / 1000); last = ts; acc += dt * +$('a2speed').value;
+    let n = 0; while (acc >= DT && n < 60){ toyStepA(S); acc -= DT; n++; } if (n === 60) acc = 0;
+    draw(); if (over()){ playing = false; btn(); return; } requestAnimationFrame(frame); }
+  function btn(){ $('a2play').textContent = playing ? 'Pause' : (over() ? 'Replay' : 'Play'); }
+  function play(){ if (over()){ S = newToy(); } playing = true; last = performance.now(); btn(); requestAnimationFrame(frame); }
+  $('a2play').onclick = () => { if (playing){ playing = false; btn(); } else play(); };
+  $('a2reset').onclick = () => { S = newToy(); acc = 0; draw(); if (!playing) btn(); };
+  redraws.push(draw); draw(); btn();
+  if (/debug/.test(location.hash)){ const T = newToy(), t0 = performance.now(); let g = 0; while (!(T.r.st === 'DONE' || T.t > 3000) && g++ < 8000) toyStepA(T);
+    DBG.push(`A2 headless: ${Math.round(performance.now() - t0)} ms, done at ${T.t} s, finished ${T.finT}, ${JSON.stringify(T.st)}, cells ${T.cells.map(c => pct(c.uf) + (c.wo ? 'wo' : '')).join(' ')}`); }
+  if (!RM && 'IntersectionObserver' in window) new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting && !started){ started = true; play(); } }), {threshold: 0.3}).observe(cv);
+})();
+
+// ----- allocator: greedy makespan-balanced insertion + capped 2-opt (shared by A2 and A3) -----
+function solve(starts, cand, C){
+  const R = starts.length, tours = starts.map(() => []), cost = new Array(R).fill(0), used = new Set();
+  const dd = (a, b) => Math.round(hyp(a[0]-b[0], a[1]-b[1]) * 1000);
+  let left = cand.length;
+  while (left > 0){
+    let best = null;
+    for (const c of cand){ if (used.has(c)) continue;
+      for (let r = 0; r < R; r++){ const tr = tours[r];
+        for (let p = 0; p <= tr.length; p++){
+          const a = p === 0 ? starts[r] : C[tr[p-1]];
+          const delta = p === tr.length ? dd(a, C[c]) : dd(a, C[c]) + dd(C[c], C[tr[p]]) - dd(a, C[tr[p]]);
+          let mk = cost[r] + delta; for (let q = 0; q < R; q++) if (q !== r && cost[q] > mk) mk = cost[q];
+          if (!best || mk < best[0] || (mk === best[0] && (delta < best[1] || (delta === best[1] && (c < best[2] || (c === best[2] && (r < best[3] || (r === best[3] && p < best[4])))))))) best = [mk, delta, c, r, p];
+        } } }
+    tours[best[3]].splice(best[4], 0, best[2]); cost[best[3]] += best[1]; used.add(best[2]); left--;
+  }
+  for (let r = 0; r < R; r++){ const tr = tours[r], n = tr.length;
+    for (let pass = 0; pass < 2; pass++){ let imp = false;
+      for (let i = 0; i < n - 1; i++) for (let j = i + 1; j < n; j++){
+        const a = i === 0 ? starts[r] : C[tr[i-1]], b = C[tr[i]], c = C[tr[j]], e = j + 1 < n ? C[tr[j+1]] : null;
+        const delta = dd(a, c) + (e ? dd(b, e) : 0) - dd(a, b) - (e ? dd(c, e) : 0);
+        if (delta < 0){ let x = i, y = j; while (x < y){ const tmp = tr[x]; tr[x] = tr[y]; tr[y] = tmp; x++; y--; } imp = true; }
+      }
+      if (!imp) break; } }
+  return tours;
+}
+/* =====================================================================
+   PART B — sharing out the cells
+   ===================================================================== */
+// ----- B1: the allocator's board, 25 cells of 20 m -----
+(function(){
+  const NC = 25, HOME = 12, C = []; for (let c = 0; c < NC; c++) C.push([-40 + 20 * (c % 5), -40 + 20 * Math.floor(c / 5)]);
+  function run(lo, hi){
+  const contact = t => t < lo || t >= hi;
+  const T = 2400, frames = [], events = [];
+  const pos = [[0, 0], [0, 3]];
+  const view = [new Uint8Array(NC), new Uint8Array(NC)], peerPos = [pos[1].slice(), pos[0].slice()], heardAt = [0, 0];
+  const tours = [null, null];
+  const truth = [new Uint8Array(NC), new Uint8Array(NC)];
+  let dup = 0, dupIn = 0, wasLinked = true, done = false;
+  function solveFor(i){ const starts = i === 0 ? [pos[0], peerPos[0]] : [peerPos[1], pos[1]]; const cand = []; for (let c = 0; c < NC; c++) if (!view[i][c]) cand.push(c); tours[i] = cand.length ? solve(starts.map(p => p.slice()), cand, C) : [[], []]; }
+  solveFor(0); solveFor(1);
+  for (let t = 0; t <= T; t++){
+    const L = contact(t);
+    if (L !== wasLinked){ events.push({t, text: L ? 'Back in contact. The two copies of the board merge, and both robots share out the cells the same way again.' : 'Link lost. Each robot now plans with where it last heard the other, and can’t see the other’s new progress.'}); wasLinked = L; }
+    const changed = [false, false];
+    if (L){ for (let c = 0; c < NC; c++){ const m = view[0][c] | view[1][c]; if (m !== view[0][c]){ view[0][c] = m; changed[0] = true; } if (m !== view[1][c]){ view[1][c] = m; changed[1] = true; } }
+      peerPos[0] = pos[1].slice(); peerPos[1] = pos[0].slice(); heardAt[0] = heardAt[1] = t; }
+    if (L && t > 0 && (changed[0] || changed[1] || t % 10 === 0)){ solveFor(0); solveFor(1); }
+    else { for (let i = 0; i < 2; i++) if (changed[i]) solveFor(i); }
+    for (let i = 0; i < 2; i++){ const my = tours[i][i]; if (!my || !my.length) continue; const f = my[0], tgt = C[f], d = hyp(tgt[0] - pos[i][0], tgt[1] - pos[i][1]);
+      if (d <= 0.44){ pos[i] = tgt.slice(); if (truth[1-i][f] && !truth[i][f]){ dup++; if (L) dupIn++; } truth[i][f] = 1; view[i][f] = 1; if (L) view[1-i][f] = 1;
+        if (L){ peerPos[0] = pos[1].slice(); peerPos[1] = pos[0].slice(); solveFor(0); solveFor(1); } else solveFor(i); }
+      else { pos[i] = [pos[i][0] + (tgt[0] - pos[i][0]) / d * 0.44, pos[i][1] + (tgt[1] - pos[i][1]) / d * 0.44]; } }
+    const same = JSON.stringify(tours[0]) === JSON.stringify(tours[1]);
+    frames.push({pos: pos.map(p => p.slice()), view: [view[0].slice(), view[1].slice()], tours: [tours[0], tours[1]], peerPos: peerPos.map(p => p.slice()), heardAt: heardAt.slice(), L, same, dup, truthN: truth[0].reduce((a, v, k) => a + (v | truth[1][k]), 0)});
+    if (!done && frames[t].truthN === NC){ done = true; events.push({t, text: `Every cell done. ${dup} cell${dup === 1 ? ' was' : 's were'} done twice, ${dupIn ? (dup - dupIn) + ' of them' : 'all'} while the link was down.`}); }
+  }
+  events.sort((a, b) => a.t - b.t);
+  return {T, frames, events, dup, dupIn};
+  }
+  const {T, frames, events, dup, dupIn} = run(200, 520);
+  const lastT = (frames.findIndex(f => f.truthN === NC) + 1 || T) + 20;
+  DBG.push(`B1: all cells done at ${lastT - 20}, dup ${dup} (in contact ${dupIn})`);
+  const RN = ['R1', 'R2'], RC = ['r0', 'r1'];
+  function drawBoard(cv, i, f, tt){
+    const {ctx, w, h} = setup(cv), s = w / 100, X = x => (x + 50) * s, Y = y => h - (y + 50) * s;
+    ctx.clearRect(0, 0, w, h);
+    for (let c = 0; c < NC; c++){ const x0 = X(C[c][0] - 10), y0 = Y(C[c][1] + 10); if (f.view[i][c]){ ctx.fillStyle = TK.cov; ctx.fillRect(x0, y0, 20*s, 20*s); } }
+    ctx.strokeStyle = rgba('muted', 0.3); ctx.lineWidth = 1; for (let k = 1; k < 5; k++){ ctx.beginPath(); ctx.moveTo(k*20*s, 0); ctx.lineTo(k*20*s, h); ctx.moveTo(0, k*20*s); ctx.lineTo(w, k*20*s); ctx.stroke(); }
+    ctx.setLineDash([3, 3]); ctx.strokeStyle = rgba('ink', 0.5); ctx.strokeRect(X(-10) + 3, Y(10) + 3, 20*s - 6, 20*s - 6); ctx.setLineDash([]);
+    label(ctx, 'home', X(0), Y(-10) - 10, {size: 10, color: TK.muted, align: 'center'});
+    const starts = i === 0 ? [f.pos[0], f.peerPos[0]] : [f.peerPos[1], f.pos[1]];
+    for (let r = 0; r < 2; r++){ const tr = f.tours[i][r]; if (!tr || !tr.length) continue;
+      ctx.beginPath(); ctx.moveTo(X(starts[r][0]), Y(starts[r][1])); tr.forEach(c => ctx.lineTo(X(C[c][0]), Y(C[c][1])));
+      ctx.strokeStyle = rgba(RC[r], r === i ? 0.85 : 0.6); ctx.lineWidth = r === i ? 2 : 1.6; ctx.setLineDash(r === i ? [] : [5, 4]); ctx.stroke(); ctx.setLineDash([]);
+      const fc = tr[0]; ctx.strokeStyle = TK[RC[r]]; ctx.lineWidth = 2.5; ctx.strokeRect(X(C[fc][0] - 10) + 2 + 2*r, Y(C[fc][1] + 10) + 2 + 2*r, 20*s - 4 - 4*r, 20*s - 4 - 4*r); }
+    robotGlyph(ctx, X(f.pos[i][0]), Y(f.pos[i][1]), TK[RC[i]], null, RN[i]);
+    const pp = f.peerPos[i], o = 1 - i;
+    if (f.L) robotGlyph(ctx, X(pp[0]), Y(pp[1]), TK[RC[o]], null, RN[o]);
+    else { ghost(ctx, X(pp[0]), Y(pp[1]), TK[RC[o]]); const lft = X(pp[0]) > w * 0.5; label(ctx, `${RN[o]} last heard ${Math.floor(tt - f.heardAt[i])} s ago`, X(pp[0]) + (lft ? -10 : 10), Y(pp[1]) - 12, {size: 10, color: TK[RC[o]], align: lft ? 'right' : 'left'}); }
+  }
+  player({play: $('bbplay'), scrub: $('bbscrub'), clock: $('bbclock'), log: $('bblog'), events, dur: Math.min(T, lastT), speed: 40, observe: $('bbc0'), rest: 380,
+    draw(t){ const f = frames[Math.min(frames.length - 1, Math.floor(t))]; drawBoard($('bbc0'), 0, f, t); drawBoard($('bbc1'), 1, f, t);
+      const cov = [f.view[0].reduce((a, v) => a + v, 0), f.view[1].reduce((a, v) => a + v, 0)];
+      $('bbstate').innerHTML = `<div class="row"><span class="who">Link</span><span class="${f.L ? 'ok' : 'nok'}">${f.L ? 'in contact' : 'lost'}</span></div>` +
+        `<div class="row"><span class="who">Tours</span><span class="${f.same ? 'ok' : 'nok'}">${f.same ? 'the same on both copies' : 'different: the copies disagree'}</span></div>` +
+        `<div class="row"><span class="who">R1 thinks</span><span>${cov[0]} of 25 done</span></div><div class="row"><span class="who">R2 thinks</span><span>${cov[1]} of 25 done</span></div>` +
+        `<div class="row"><span class="who">Truly done</span><span>${f.truthN} of 25 · <b>${f.dup}</b> done twice</span></div>`; }});
+})();
+
+// Stored lists: [col,row] from the south-west corner, home [2,2] last; helps = list index (plan_n*.yaml)
+const PLANS={
+  PH:{2:[{dir:'N',helps:1,cells:[[2,3],[2,4],[1,4],[0,4],[0,3],[0,2],[0,1],[0,0],[1,0],[1,1],[1,2],[1,3],[2,2]]},
+         {dir:'S',helps:0,cells:[[2,1],[2,0],[3,0],[4,0],[4,1],[4,2],[4,3],[4,4],[3,4],[3,3],[3,2],[3,1],[2,2]]}],
+      3:[{dir:'S',helps:2,cells:[[2,1],[3,1],[4,1],[4,0],[3,0],[2,0],[1,0],[0,0],[2,2]]},
+         {dir:'W',helps:0,cells:[[1,2],[1,3],[1,4],[0,4],[0,3],[0,2],[0,1],[1,1],[2,2]]},
+         {dir:'N',helps:1,cells:[[2,3],[2,4],[3,4],[4,4],[4,3],[4,2],[3,2],[3,3],[2,2]]}],
+      4:[{dir:'S',helps:1,cells:[[2,1],[2,0],[1,0],[0,0],[0,1],[1,1],[2,2]]},
+         {dir:'E',helps:0,cells:[[3,2],[4,2],[4,1],[4,0],[3,0],[3,1],[2,2]]},
+         {dir:'W',helps:3,cells:[[1,2],[0,2],[0,3],[0,4],[1,4],[1,3],[2,2]]},
+         {dir:'N',helps:2,cells:[[2,3],[2,4],[3,4],[4,4],[4,3],[3,3],[2,2]]}]},
+  PC:{2:[{dir:'S',helps:1,cells:[[2,1],[3,1],[3,2],[4,2],[4,1],[4,0],[3,0],[2,0],[1,0],[0,0],[0,1],[0,2],[2,2]]},
+         {dir:'N',helps:0,cells:[[2,3],[3,3],[4,3],[4,4],[3,4],[2,4],[1,4],[0,4],[0,3],[1,3],[1,2],[1,1],[2,2]]}],
+      4:[{dir:'W',helps:2,cells:[[1,2],[0,2],[0,3],[0,4],[1,4],[1,3],[2,2]]},
+         {dir:'S',helps:3,cells:[[2,1],[1,1],[0,1],[0,0],[1,0],[2,0],[2,2]]},
+         {dir:'N',helps:0,cells:[[2,3],[2,4],[3,4],[4,4],[4,3],[3,3],[2,2]]},
+         {dir:'E',helps:1,cells:[[3,2],[4,2],[4,1],[4,0],[3,0],[3,1],[2,2]]}]}
+};
+// Lists go out by direction: northernmost robot N, southernmost S, the others E then W.
+const DIR_OF={2:['S','N'],3:['W','N','S'],4:['E','W','S','N']};
+// ----- B2: the stored lists the runs used -----
+(function(){
+  const cv = $('blc'), MODEL = {PH: {2: 713, 3: 576, 4: 397}, PC: {2: 751, 4: 429}}, DIRW = {N: 'north', S: 'south', E: 'east', W: 'west'};
+  let N = 2, arm = 'PH';
+  function lists(){ const L = PLANS[arm][N], D = DIR_OF[N];
+    return L.map(l => ({robot: D.indexOf(l.dir), dir: l.dir, cells: l.cells.slice(0, -1), helps: D.indexOf(L[l.helps].dir), hcells: L[l.helps].cells.slice(0, -1)})).sort((a, b) => a.robot - b.robot); }
+  function arrow(ctx, x0, y0, x1, y1, col, dash){ const a = Math.atan2(y1 - y0, x1 - x0);
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.setLineDash(dash || []); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - 9 * Math.cos(a - 0.45), y1 - 9 * Math.sin(a - 0.45)); ctx.lineTo(x1 - 9 * Math.cos(a + 0.45), y1 - 9 * Math.sin(a + 0.45)); ctx.closePath(); ctx.fillStyle = col; ctx.fill(); }
+  function draw(){
+    const {ctx, w, h} = setup(cv), cs = w / 5, X = c => (c + 0.5) * cs, Y = r => h - (r + 0.5) * cs, Ls = lists();
+    ctx.clearRect(0, 0, w, h);
+    Ls.forEach(l => { const col = 'r' + l.robot; l.cells.forEach(([c, r]) => { ctx.fillStyle = rgba(col, 0.13); ctx.fillRect(c * cs, h - (r + 1) * cs, cs, cs); }); });
+    ctx.fillStyle = TK.tint; ctx.fillRect(2 * cs, h - 3 * cs, cs, cs);
+    ctx.strokeStyle = rgba('muted', 0.4); ctx.lineWidth = 1; for (let k = 1; k < 5; k++){ ctx.beginPath(); ctx.moveTo(k * cs, 0); ctx.lineTo(k * cs, h); ctx.moveTo(0, k * cs); ctx.lineTo(w, k * cs); ctx.stroke(); }
+    ctx.setLineDash([3, 3]); ctx.strokeStyle = rgba('ink', 0.55); ctx.strokeRect(2 * cs + 3, h - 3 * cs + 3, cs - 6, cs - 6); ctx.setLineDash([]);
+    label(ctx, 'home', X(2), Y(2) + cs * 0.3, {size: 10, color: TK.muted, align: 'center'});
+    Ls.forEach(l => { const col = TK['r' + l.robot], pts = [[2, 2]].concat(l.cells, [[2, 2]]);
+      ctx.beginPath(); pts.forEach(([c, r], k) => k ? ctx.lineTo(X(c), Y(r)) : ctx.moveTo(X(c), Y(r))); ctx.strokeStyle = col; ctx.lineWidth = 2.2; ctx.lineJoin = 'round'; ctx.stroke();
+      for (let k = 1; k < pts.length; k++){ const [c0, r0] = pts[k-1], [c1, r1] = pts[k], mx = (X(c0) + X(c1)) / 2, my = (Y(r0) + Y(r1)) / 2, a = Math.atan2(Y(r1) - Y(r0), X(c1) - X(c0));
+        ctx.beginPath(); ctx.moveTo(mx + 5 * Math.cos(a), my + 5 * Math.sin(a)); ctx.lineTo(mx - 5 * Math.cos(a - 0.6), my - 5 * Math.sin(a - 0.6)); ctx.lineTo(mx - 5 * Math.cos(a + 0.6), my - 5 * Math.sin(a + 0.6)); ctx.closePath(); ctx.fillStyle = col; ctx.fill(); } });
+    Ls.forEach(l => { const col = TK['r' + l.robot], from = l.cells[l.cells.length - 1], to = l.hcells[l.hcells.length - 1];
+      const fx = X(from[0]) + cs * 0.18, fy = Y(from[1]) - cs * 0.18, tx = X(to[0]) - cs * 0.12, ty = Y(to[1]) + cs * 0.12;
+      ctx.save(); ctx.globalAlpha = 0.85; arrow(ctx, fx, fy, tx, ty, col, [5, 4]); ctx.restore(); });
+    Ls.forEach(l => { const col = TK['r' + l.robot];
+      l.cells.forEach(([c, r], k) => label(ctx, String(k + 1), X(c), Y(r), {size: 10, color: col, align: 'center', edge: col}));
+      const [c, r] = l.cells[0]; robotGlyph(ctx, X(c) - cs * 0.28, Y(r) + cs * 0.26, col, null, 'R' + (l.robot + 1), 5.5); });
+    $('blstate').innerHTML = Ls.map(l => `<div class="row"><span class="who" style="color:var(--r${l.robot})">R${l.robot + 1}</span><span>starts ${DIRW[l.dir]} · ${l.cells.length} cells · then helps R${l.helps + 1}</span></div>`).join('') +
+      `<div class="row"><span class="who">Model</span><span>last robot finished at ${MODEL[arm][N]} s</span></div>`;
+  }
+  const pc3 = $('blPC');
+  function sync(){ pc3.disabled = N === 3; if (N === 3 && arm === 'PC'){ arm = 'PH'; $('blPH').checked = true; } draw(); }
+  document.querySelectorAll('input[name="blN"]').forEach(el => el.addEventListener('change', e => { if (e.target.checked){ N = +e.target.value; sync(); } }));
+  document.querySelectorAll('input[name="blA"]').forEach(el => el.addEventListener('change', e => { if (e.target.checked){ arm = e.target.value; sync(); } }));
+  redraws.push(draw); sync();
+})();
+
+/* =====================================================================
+   PART C — radio
+   ===================================================================== */
+// ----- B1: radio -----
+(function(){
+  const T = 80, TRR = 1.2;
+  const p1 = [12, 15];
+  const p2 = t => t < 20 ? [42, 28 - 0.6 * t] : t < 60 ? [42, 16] : [42, Math.max(1.5, 16 - 0.7 * (t - 60))];
+  const segD = (p, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx*dx + dy*dy; const u = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2)); return hyp(a[0] + u*dx - p[0], a[1] + u*dy - p[1]); };
+  const btr = []; for (const y of [2.4, 4.6, 6.8, 9, 11.2, 13.4, 17.6, 19.8, 22, 24.2, 26.4, 28.6]) btr.push([30, y]);
+  { const r = rng(7); let n = 0; while (n++ < 3000 && btr.length < 40){ const x = 2 + r() * 56, y = 1.5 + r() * 27;
+      if (hyp(x - p1[0], y - p1[1]) < 4 || Math.abs(x - 30) < 3.5 || Math.abs(x - 42) < 3.5) continue;
+      if (btr.some(b => hyp(b[0] - x, b[1] - y) < 4.2)) continue;
+      let bad = false; for (let t = 14; t <= 66 && !bad; t += 0.5) if (segD([x, y], p1, p2(t)) < 2.4) bad = true;
+      if (!bad) btr.push([x, y]); } }
+  const blockedAt = t => btr.some(b => segD(b, p1, p2(t)) < TRR);
+  let L0 = null, L1 = null; for (let t = 0; t <= T; t += 0.05){ const b = blockedAt(t); if (L0 === null && !b) L0 = t; else if (L0 !== null && L1 === null && b) L1 = t; }
+  const Lup = [L0, L1 === null ? T + 1 : L1];
+  const linkUp = t => t >= Lup[0] && t < Lup[1];
+  // hearing logic, beacons at 1 Hz (R1 at integer s, R2 at +0.5 s)
+  function state(t){
+    const s = {r1hears: null, r2hears: null, r1contact: null, r2contact: null, r1last: null, r2last: null};
+    let r1HeardBy2 = -1, r2HeardBy1 = -1, r1names = false, r2names = false, r1c = false, r2c = false, r1cT = null, r2cT = null;
+    for (let k = 0; k <= T * 2; k++){ const tb = k / 2; if (tb > t) break;
+      if (k % 2 === 0){ if (linkUp(tb)){ r1HeardBy2 = tb; if (r2HeardBy1 >= 0 && tb - r2HeardBy1 <= 10){ r1names = true; } } }
+      else { if (linkUp(tb)){ r2HeardBy1 = tb; } }
+      const r2names_now = r1HeardBy2 >= 0 && tb - r1HeardBy2 <= 10;
+      const r1names_now = r2HeardBy1 >= 0 && tb - r2HeardBy1 <= 10;
+      if (k % 2 === 1 && linkUp(tb)) r2names = r2names_now;
+      if (k % 2 === 0 && linkUp(tb)) r1names = r1names_now;
+    }
+    const pres1 = r2HeardBy1 >= 0 && t - r2HeardBy1 <= 10, pres2 = r1HeardBy2 >= 0 && t - r1HeardBy2 <= 10;
+    s.r1hears = pres1; s.r2hears = pres2; s.r1last = r2HeardBy1; s.r2last = r1HeardBy2;
+    s.r1named = pres1 && r2names; s.r2named = pres2 && r1names;
+    s.r1contact = s.r1hears && s.r1named; s.r2contact = s.r2hears && s.r2named;
+    return s; }
+  // contact start times, exchange progress
+  let c1 = null, c2 = null; for (let t = 0; t <= T; t += 0.5){ const s = state(t); if (c1 === null && s.r1contact) c1 = t; if (c2 === null && s.r2contact) c2 = t; }
+  const cStart = Math.max(c1, c2), seqR1 = 1310, seqR2 = 1840, rate = 52; // updates per s
+  const fb = Math.ceil(Lup[0] * 2) / 2, snd = (fb * 2) % 2 === 0 ? 'R1' : 'R2', hr = snd === 'R1' ? 'R2' : 'R1';
+  const done12 = cStart + seqR1 / rate, done21 = cStart + seqR2 / rate, exDone = Math.max(done12, done21);
+  const prog = (t, d) => t < cStart ? 0 : Math.min(1, (t - cStart) / (d - cStart));
+  const events = [
+    {t: 0, text: 'Trunks block the radio. Each robot sends a beacon every second, and none gets through.'},
+    {t: Lup[0], text: 'R2 moves into the clear. Beacons start to arrive.'},
+    {t: cStart, text: 'Each robot hears the other, and knows it is heard back. They are in contact and start swapping maps.'},
+    {t: exDone, text: 'Each robot now has everything the other had. Both plan on the same merged map.'},
+    {t: Lup[1], text: 'R2 drives behind trunks and the link drops. After 10 s of silence, each counts the other as out of contact.'}
+  ];
+  // mini maps: own explored region per robot, reveal time order
+  const own = [new Float32Array(10000).fill(Infinity), new Float32Array(10000).fill(Infinity)];
+  const paths = [[[-42,-42],[-40,-20],[-30,-5],[-38,15],[-25,30],[-12,22],[-18,5],[-8,-12],[-20,-30]], [[-38,-42],[-10,-40],[10,-30],[30,-38],[40,-20],[28,-5],[38,12],[24,25],[38,38],[12,40]]];
+  paths.forEach((P, i) => { let tt = 0; for (let k = 1; k < P.length; k++){ const a = P[k-1], b = P[k], L = hyp(b[0]-a[0], b[1]-a[1]); for (let s = 0; s <= L; s += 2){ tt++; const px = a[0] + (b[0]-a[0])*s/L, py = a[1] + (b[1]-a[1])*s/L;
+      for (let j = Math.max(0, Math.floor(py + 50 - 9)); j <= Math.min(99, Math.floor(py + 50 + 9)); j++) for (let q = Math.max(0, Math.floor(px + 50 - 9)); q <= Math.min(99, Math.floor(px + 50 + 9)); q++){ if (hyp(q - 50 + .5 - px, j - 50 + .5 - py) <= 9){ const c = j*100 + q; if (own[i][c] > tt) own[i][c] = tt; } } } } });
+  const order = own.map(o => { const idx = []; for (let c = 0; c < 10000; c++) if (isFinite(o[c])) idx.push(c); idx.sort((a, b) => o[a] - o[b]); return idx; });
+  const mcv = [document.createElement('canvas'), document.createElement('canvas')]; mcv.forEach(c => { c.width = c.height = 100; });
+  function drawMini(cv, i, p){
+    const {ctx, w, h} = setup(cv); const o = 1 - i, oc = mcv[i].getContext('2d'), img = oc.createImageData(100, 100), d = img.data;
+    const U = mix([TK.unseen]), S = mix([TK.surface]), mine = mix([TK.surface, rgba(i ? 'r1' : 'r0', 0.35)]), theirs = mix([TK.surface, rgba(o ? 'r1' : 'r0', 0.35)]);
+    for (let c = 0; c < 10000; c++){ const q = ((99 - (c / 100 | 0)) * 100 + c % 100) * 4; d[q] = U[0]; d[q+1] = U[1]; d[q+2] = U[2]; d[q+3] = 255; }
+    const nrecv = Math.floor(p * order[o].length);
+    for (let k = 0; k < nrecv; k++){ const c = order[o][k], q = ((99 - (c / 100 | 0)) * 100 + c % 100) * 4; d[q] = theirs[0]; d[q+1] = theirs[1]; d[q+2] = theirs[2]; }
+    for (const c of order[i]){ const q = ((99 - (c / 100 | 0)) * 100 + c % 100) * 4; d[q] = mine[0]; d[q+1] = mine[1]; d[q+2] = mine[2]; }
+    oc.putImageData(img, 0, 0); ctx.clearRect(0, 0, w, h); ctx.imageSmoothingEnabled = true; ctx.drawImage(mcv[i], 0, 0, w, h); }
+  player({play: $('b1play'), scrub: $('b1scrub'), clock: $('b1clock'), log: $('b1log'), events, dur: T, speed: 2.5, observe: $('b1c'), rest: 40,
+    draw(t){
+      const {ctx, w, h} = setup($('b1c')), s = w / 60, X = x => x * s, Y = y => h - y * s;
+      ctx.clearRect(0, 0, w, h);
+      btr.forEach(b => { ctx.beginPath(); ctx.arc(X(b[0]), Y(b[1]), TRR * s, 0, 7); ctx.fillStyle = TK.tree; ctx.fill(); });
+      const q = p2(t), up = linkUp(t);
+      ctx.beginPath(); ctx.moveTo(X(p1[0]), Y(p1[1])); ctx.lineTo(X(q[0]), Y(q[1])); ctx.strokeStyle = up ? TK.link : rgba('muted', 0.5); ctx.lineWidth = up ? 2.5 : 1.5; ctx.setLineDash(up ? [] : [4, 4]); ctx.stroke(); ctx.setLineDash([]);
+      if (!up) label(ctx, 'blocked by trunks', (X(p1[0]) + X(q[0])) / 2, (Y(p1[1]) + Y(q[1])) / 2 - 12, {size: 10, color: TK.muted, align: 'center'});
+      [[p1, 0, 'r0'], [q, 0.5, 'r1']].forEach(([p, ph, col]) => { const k = Math.floor(t - ph), age = t - ph - k; if (k >= 0 && age < 0.8){ const rr = (3 + age * 16) * s; ctx.beginPath(); ctx.arc(X(p[0]), Y(p[1]), rr, 0, 7); ctx.strokeStyle = rgba(col, 0.6 * (1 - age / 0.8)); ctx.lineWidth = 2; ctx.stroke(); } });
+      const st = state(t);
+      robotGlyph(ctx, X(p1[0]), Y(p1[1]), TK.r0, st.r1contact ? TK.link : null, 'R1', 7);
+      robotGlyph(ctx, X(q[0]), Y(q[1]), TK.r1, st.r2contact ? TK.link : null, 'R2', 7);
+      const any = st.r1hears || st.r2hears, both = st.r1contact && st.r2contact;
+      let msg, cls = '';
+      if (!up && any){ const left = Math.max(0, Math.ceil(10 - (t - Math.max(st.r1last, st.r2last)))); msg = `Link lost. Each counts the other as out of contact after 10 s of silence (${left} s left).`; cls = 'nok'; }
+      else if (both){ msg = t < exDone ? 'In contact: swapping maps' : 'In contact: maps swapped'; cls = 'ok'; }
+      else if (any) msg = 'Beacons arriving, contact not confirmed yet';
+      else { msg = 'Out of contact: trunks block the radio'; cls = 'nok'; }
+      $('b1st').innerHTML = `<div class="row"><span class="who">Status</span><span class="${cls}">${msg}</span></div>`;
+      const a = prog(t, done12), b = prog(t, done21);
+      $('b1ex').innerHTML = `<span class="k">Map swap${t >= exDone ? ': <span class="ok">done</span>' : ''}</span>` +
+        `<div class="xbar"><span>R1 → R2</span><div class="track"><div class="fill" style="width:${a*100}%;background:var(--r0)"></div></div><span class="num">${Math.round(a*100)}%</span></div>` +
+        `<div class="xbar"><span>R2 → R1</span><div class="track"><div class="fill" style="width:${b*100}%;background:var(--r1)"></div></div><span class="num">${Math.round(b*100)}%</span></div>`;
+      drawMini($('b1m0'), 0, b); drawMini($('b1m1'), 1, a);
+    }});
+})();
+if (/debug/.test(location.hash)){ const d = $('dbg'); d.hidden = false; d.textContent = DBG.join('\n') + '\n'; }
+})();
+</script>
+<script>
+(function(){
+'use strict';
+/* ---------- toy simulation: gen-40 off and the gen-41 arms, all on the off team layer ---------- */
+const HALF=50,KR=2.5,KG=40,KN=KG*KG;
+const DT=0.5,V=0.44,SENSE=10,RANGE=27,SWAP_DELAY=6,HORIZON=3000;
+const DWELL=2,PASS=2,ARRIVE=0.4,MIN_GOAL=4,CLAIM=10,ROUTE_MIN=4,ROUTE_MAX=12,ROUTE_REACH=20;
+const SPAWNS=[[0,0],[0,3],[0,-3],[0,6]];
+const A={OWN:0,HELP:1,SEARCH:2,WAIT:3,HOME:4,DONE:5};
+const kx=i=>-HALF+KR*(i+0.5);
+const OFF=[];for(let dj=-4;dj<=4;dj++)for(let di=-4;di<=4;di++)if(Math.hypot(di*KR,dj*KR)<=SENSE)OFF.push([di,dj]);
+// Stored lists: [col,row] from the south-west corner, home [2,2] last; helps = list index (plan_n*.yaml)
+const PLANS={
+  PH:{2:[{dir:'N',helps:1,cells:[[2,3],[2,4],[1,4],[0,4],[0,3],[0,2],[0,1],[0,0],[1,0],[1,1],[1,2],[1,3],[2,2]]},
+         {dir:'S',helps:0,cells:[[2,1],[2,0],[3,0],[4,0],[4,1],[4,2],[4,3],[4,4],[3,4],[3,3],[3,2],[3,1],[2,2]]}],
+      3:[{dir:'S',helps:2,cells:[[2,1],[3,1],[4,1],[4,0],[3,0],[2,0],[1,0],[0,0],[2,2]]},
+         {dir:'W',helps:0,cells:[[1,2],[1,3],[1,4],[0,4],[0,3],[0,2],[0,1],[1,1],[2,2]]},
+         {dir:'N',helps:1,cells:[[2,3],[2,4],[3,4],[4,4],[4,3],[4,2],[3,2],[3,3],[2,2]]}],
+      4:[{dir:'S',helps:1,cells:[[2,1],[2,0],[1,0],[0,0],[0,1],[1,1],[2,2]]},
+         {dir:'E',helps:0,cells:[[3,2],[4,2],[4,1],[4,0],[3,0],[3,1],[2,2]]},
+         {dir:'W',helps:3,cells:[[1,2],[0,2],[0,3],[0,4],[1,4],[1,3],[2,2]]},
+         {dir:'N',helps:2,cells:[[2,3],[2,4],[3,4],[4,4],[4,3],[3,3],[2,2]]}]},
+  PC:{2:[{dir:'S',helps:1,cells:[[2,1],[3,1],[3,2],[4,2],[4,1],[4,0],[3,0],[2,0],[1,0],[0,0],[0,1],[0,2],[2,2]]},
+         {dir:'N',helps:0,cells:[[2,3],[3,3],[4,3],[4,4],[3,4],[2,4],[1,4],[0,4],[0,3],[1,3],[1,2],[1,1],[2,2]]}],
+      4:[{dir:'W',helps:2,cells:[[1,2],[0,2],[0,3],[0,4],[1,4],[1,3],[2,2]]},
+         {dir:'S',helps:3,cells:[[2,1],[1,1],[0,1],[0,0],[1,0],[2,0],[2,2]]},
+         {dir:'N',helps:0,cells:[[2,3],[2,4],[3,4],[4,4],[4,3],[3,3],[2,2]]},
+         {dir:'E',helps:1,cells:[[3,2],[4,2],[4,1],[4,0],[3,0],[3,1],[2,2]]}]}
+};
+// Lists go out by direction: northernmost robot N, southernmost S, the others E then W.
+const DIR_OF={2:['S','N'],3:['W','N','S'],4:['E','W','S','N']};
+const ARMS=[
+  {key:'R',gen:41,name:'R',cs:20,thr:0.10,stop:'cells',alloc:true,route:false,
+   chips:['allocator','one goal','fill holes'],ch:[],
+   rule:'The V1 planner on V2’s cells and finish rule: cells shared out as it goes, one goal at a time.'},
+  {key:'A',gen:41,name:'A',cs:20,thr:0.10,stop:'cells',alloc:true,route:true,
+   chips:['allocator','route','fill holes'],ch:[1],
+   rule:'Same as R, but drives a route of viewpoints through its cell without stopping.'},
+  {key:'PH',gen:41,name:'PH',cs:20,thr:0.10,stop:'cells',alloc:false,route:true,plans:'PH',
+   chips:['stored list','route','help + home wait'],ch:[0,2],
+   rule:'Nothing shared out during the run: works a fixed list of cells, then helps one teammate, then waits at home.'},
+  {key:'PC',gen:41,name:'PC',cs:20,thr:0.10,stop:'cells',alloc:false,route:true,plans:'PC',
+   chips:['contact list','route','help + home wait'],ch:[0],
+   rule:'PH with lists picked so the robots spend more time in radio contact, late in the run most of all.'}
+];
+function simulate(N,arm){
+  const CS=arm.cs,CN=100/CS,NC=CN*CN,TOT=(CS/KR)*(CS/KR),THR=Math.floor(arm.thr*TOT+1e-9);
+  const cellOfK=new Int16Array(KN);
+  for(let j=0;j<KG;j++)for(let i=0;i<KG;i++)cellOfK[j*KG+i]=Math.floor(j*KR/CS)*CN+Math.floor(i*KR/CS);
+  const cellC=c=>[-HALF+CS*(c%CN)+CS/2,-HALF+CS*Math.floor(c/CN)+CS/2];
+  const nbr=(a,b)=>Math.max(Math.abs(a%CN-b%CN),Math.abs(Math.floor(a/CN)-Math.floor(b/CN)))<=1;
+  const pairs=[],PI=[];for(let a=0;a<N;a++)PI.push([]);
+  for(let a=0;a<N;a++)for(let b=a+1;b<N;b++){PI[a][b]=PI[b][a]=pairs.length;pairs.push([a,b]);}
+  const P=pairs.length;
+  const R=SPAWNS.slice(0,N).map((s,i)=>({id:i,x:s[0],y:s[1],home:s.slice(),known:new Uint8Array(KN),nKnown:0,
+    unk:new Int16Array(NC).fill(TOT),peerDone:new Uint8Array(NC),
+    heardAt:new Array(N).fill(-1e9),heardPos:new Array(N).fill(null),heardGoal:new Array(N).fill(null),heardFin:new Array(N).fill(false),
+    latched:false,latchT:null,homeT:null,dist:0,distLatch:null,act:A.OWN,phase:'own',plan:null,dwellUntil:-1,nextPlan:0,lastCheck:0,
+    visited:[],cell:-1,list:null,helpList:null,helpId:-1,snaps:[],tours:[],tourKey:''}));
+  let lists=null;
+  if(arm.plans){
+    const pl=PLANS[arm.plans][N];
+    const idx=c=>c[1]*CN+c[0];
+    const robotOfList=pl.map(L=>DIR_OF[N].indexOf(L.dir));
+    lists=pl.map((L,li)=>({robot:robotOfList[li],cells:L.cells.map(idx),helps:L.helps}));
+    for(const L of lists){const r=R[L.robot];r.list=L.cells.slice();const H=lists[L.helps];
+      r.helpId=H.robot;r.helpList=H.cells.slice(0,-1).reverse();}
+  }
+  const seenT=new Float32Array(KN).fill(Infinity),cellDoneT=new Float32Array(NC).fill(Infinity);
+  const link=new Array(P).fill(false),contactT=new Array(P).fill(0),linkTime=new Array(P).fill(0);
+  const frames=[];
+  let now=0,step=0,seenCount=0,teamCovT=null,linkUpToLatch=0;
+
+  const ownDone=(r,c)=>r.unk[c]<=THR;
+  const teamDone=(r,c)=>ownDone(r,c)||r.peerDone[c]===1;
+  const d2=(r,p)=>Math.hypot(r.x-p[0],r.y-p[1]);
+  function sense(r){
+    const i0=Math.max(0,Math.floor((r.x-SENSE+HALF)/KR)),i1=Math.min(KG-1,Math.floor((r.x+SENSE+HALF)/KR));
+    const j0=Math.max(0,Math.floor((r.y-SENSE+HALF)/KR)),j1=Math.min(KG-1,Math.floor((r.y+SENSE+HALF)/KR));
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const dx=kx(i)-r.x,dy=kx(j)-r.y;if(dx*dx+dy*dy>SENSE*SENSE)continue;
+      const k=j*KG+i;if(!r.known[k]){r.known[k]=1;r.nKnown++;r.unk[cellOfK[k]]--;}
+      if(seenT[k]===Infinity){seenT[k]=now;seenCount++;}}
+  }
+  function union(a,b){const ka=a.known,kb=b.known;
+    for(let k=0;k<KN;k++){if(ka[k]!==kb[k]){if(!ka[k]){ka[k]=1;a.nKnown++;a.unk[cellOfK[k]]--;}else{kb[k]=1;b.nKnown++;b.unk[cellOfK[k]]--;}}}}
+  const goalOf=r=>r.plan&&r.plan.pts?r.plan.pts[r.plan.idx]:null;
+  function hear(r,o){r.heardAt[o.id]=now;r.heardPos[o.id]=[o.x,o.y];r.heardGoal[o.id]=goalOf(o);r.heardFin[o.id]=o.latched;
+    for(let c=0;c<NC;c++)if(ownDone(o,c))r.peerDone[c]=1;}
+  function claimed(r,x,y){for(let j=0;j<N;j++){if(j===r.id||now-r.heardAt[j]>10)continue;const g=r.heardGoal[j];
+    if(g&&Math.hypot(g[0]-x,g[1]-y)<CLAIM)return true;}return false;}
+  function visitedNear(r,x,y){for(const v of r.visited)if(now-v[2]<=60&&Math.hypot(v[0]-x,v[1]-y)<2.6)return true;return false;}
+  function gainAt(r,i,j,onlyCell){let g=0;for(const o of OFF){const ii=i+o[0],jj=j+o[1];if(ii<0||jj<0||ii>=KG||jj>=KG)continue;
+    const k=jj*KG+ii;if(!r.known[k]&&(onlyCell<0||cellOfK[k]===onlyCell))g++;}return g;}
+  const gainPt=(r,p,onlyCell)=>gainAt(r,Math.floor((p[0]+HALF)/KR),Math.floor((p[1]+HALF)/KR),onlyCell);
+
+  /* The live allocator: one makespan-balanced tour per robot, from each robot's own view of the team */
+  function allocate(r){
+    const bots=[];
+    for(let j=0;j<N;j++){if(j===r.id)bots.push({id:j,x:r.x,y:r.y,len:0,list:[]});
+      else if(r.heardPos[j]&&!r.heardFin[j])bots.push({id:j,x:r.heardPos[j][0],y:r.heardPos[j][1],len:0,list:[]});}
+    const rem=[];for(let c=0;c<NC;c++)if(!teamDone(r,c))rem.push(c);
+    const used=new Uint8Array(NC);let left=rem.length;
+    while(left>0){let bb=null,bc=-1,bcost=Infinity,bd=0;
+      for(const b of bots){let nc=-1,nd=Infinity;for(const c of rem){if(used[c])continue;const p=cellC(c),d=Math.hypot(p[0]-b.x,p[1]-b.y);if(d<nd){nd=d;nc=c;}}
+        if(nc>=0&&b.len+nd<bcost-1e-9){bcost=b.len+nd;bb=b;bc=nc;bd=nd;}}
+      used[bc]=1;left--;bb.list.push(bc);bb.len+=bd;const p=cellC(bc);bb.x=p[0];bb.y=p[1];}
+    return bots.find(b=>b.id===r.id).list;
+  }
+  /* Single goal: best unknown area per sqrt(distance), near the target cell first */
+  function pickGoal(r,focus){
+    let best=-1,bu=-Infinity,bestN=-1,bun=-Infinity;
+    for(let k=0;k<KN;k++){const i=k%KG,j=(k/KG)|0,x=kx(i),y=kx(j),d=Math.hypot(x-r.x,y-r.y);
+      if(d<MIN_GOAL||claimed(r,x,y)||visitedNear(r,x,y))continue;
+      const g=gainAt(r,i,j,-1);if(g<1)continue;const u=g/Math.sqrt(0.1+d);
+      if(focus>=0&&nbr(cellOfK[k],focus)&&u>bun){bun=u;bestN=k;}
+      if(u>bu){bu=u;best=k;}}
+    const k=bestN>=0?bestN:best;return k<0?null:[kx(k%KG),kx((k/KG)|0)];
+  }
+  /* Route: greedy cover of the unknown inside cell k (then k+1), ordered by nearest insertion + 2-opt */
+  function buildRoute(r,tiers,allowed){
+    for(const tc of tiers){if(tc<0)continue;
+      const cc=cellC(tc),h=CS/2+ROUTE_REACH,cands=[];
+      for(let k=0;k<KN;k++){const i=k%KG,j=(k/KG)|0,x=kx(i),y=kx(j);
+        if(Math.abs(x-cc[0])>h||Math.abs(y-cc[1])>h||!allowed[cellOfK[k]])continue;
+        if(Math.hypot(x-r.x,y-r.y)<MIN_GOAL||claimed(r,x,y))continue;
+        const cov=[];for(const o of OFF){const ii=i+o[0],jj=j+o[1];if(ii<0||jj<0||ii>=KG||jj>=KG)continue;const kk=jj*KG+ii;
+          if(!r.known[kk]&&cellOfK[kk]===tc)cov.push(kk);}
+        if(cov.length>=ROUTE_MIN)cands.push({x,y,cov});}
+      if(!cands.length)continue;
+      const covd=new Uint8Array(KN),chosen=[];
+      while(chosen.length<ROUTE_MAX){let bm=0,bc=null;
+        for(const c of cands){if(c.used)continue;let m=0;for(const kk of c.cov)if(!covd[kk])m++;if(m>bm){bm=m;bc=c;}}
+        if(!bc||bm<ROUTE_MIN)break;bc.used=true;chosen.push([bc.x,bc.y]);for(const kk of bc.cov)covd[kk]=1;}
+      if(!chosen.length)continue;
+      return {kind:'route',pts:orderRoute(r,chosen),idx:0,cell:tc};
+    }
+    return null;
+  }
+  function orderRoute(r,pts){
+    const st=[r.x,r.y],path=[],rest=pts.slice(),dd=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+    while(rest.length){let bi=0,bd=Infinity;
+      for(let q=0;q<rest.length;q++){let m=dd(st,rest[q]);for(const p of path)m=Math.min(m,dd(p,rest[q]));if(m<bd){bd=m;bi=q;}}
+      const p=rest.splice(bi,1)[0];let bp=0,bc=Infinity;
+      for(let pos=0;pos<=path.length;pos++){const a=pos===0?st:path[pos-1],b=path[pos];const c=b?dd(a,p)+dd(p,b)-dd(a,b):dd(a,p);if(c<bc){bc=c;bp=pos;}}
+      path.splice(bp,0,p);}
+    const len=pa=>{let s=dd(st,pa[0]);for(let q=1;q<pa.length;q++)s+=dd(pa[q-1],pa[q]);return s;};
+    let improved=true;
+    while(improved){improved=false;
+      for(let a=0;a<path.length-1;a++)for(let b=a+1;b<path.length;b++){const c=path.slice(0,a).concat(path.slice(a,b+1).reverse(),path.slice(b+1));
+        if(len(c)<len(path)-1e-6){path.splice(0,path.length,...c);improved=true;}}}
+    return path;
+  }
+  function snap(r){const p=r.plan;r.snaps.push({t:now,kind:p?p.kind:null,pts:p&&p.pts?p.pts.map(q=>q.slice()):null,idx:p?p.idx:0});}
+  function setPlan(r,p){r.plan=p;snap(r);}
+  function makePlan(r){
+    r.nextPlan=now+1;
+    if(arm.alloc){
+      const tour=allocate(r),key=tour.slice(0,6).join(',');
+      if(key!==r.tourKey){r.tourKey=key;r.tours.push({t:now,cells:tour.slice(0,6)});}
+      if(!tour.length){r.act=A.SEARCH;r.cell=-1;const g=pickGoal(r,-1);if(g)setPlan(r,{kind:'goal',pts:[g],idx:0,cell:-1});return;}
+      r.act=A.OWN;const k=tour[0],k1=tour.length>1?tour[1]:-1;r.cell=k;
+      if(arm.route){const allowed=new Uint8Array(NC);for(const c of tour)allowed[c]=1;const rt=buildRoute(r,[k,k1],allowed);if(rt){setPlan(r,rt);return;}}
+      const g=pickGoal(r,k);if(g)setPlan(r,{kind:'goal',pts:[g],idx:0,cell:k});return;
+    }
+    for(;;){
+      const lst=r.phase==='own'?r.list:r.phase==='help'?r.helpList:null;
+      if(!lst){r.phase='wait';r.act=A.WAIT;r.cell=-1;if(r.plan)setPlan(r,null);return;}
+      const open=lst.filter(c=>!teamDone(r,c));
+      if(!open.length){r.phase=r.phase==='own'?'help':'wait';continue;}
+      r.act=r.phase==='own'?A.OWN:A.HELP;const k=open[0],k1=open.length>1?open[1]:-1;r.cell=k;
+      const allowed=new Uint8Array(NC);for(const c of lst)allowed[c]=1;
+      const rt=buildRoute(r,[k,k1],allowed);if(rt){setPlan(r,rt);return;}
+      const g=pickGoal(r,k);if(g)setPlan(r,{kind:'goal',pts:[g],idx:0,cell:k});return;
+    }
+  }
+  function check(r){ // 1 Hz: drop viewpoints that no longer show anything; end a route whose cell is finished
+    const p=r.plan;if(!p)return;
+    if(p.kind==='route'){
+      if(teamDone(r,p.cell)){setPlan(r,null);return;}
+      const keep=p.pts.slice(p.idx).filter(q=>gainPt(r,q,p.cell)>=ROUTE_MIN);
+      if(!keep.length){setPlan(r,null);return;}
+      if(keep.length!==p.pts.length-p.idx){p.pts=keep;p.idx=0;snap(r);}
+    }else if(gainPt(r,p.pts[0],-1)===0)setPlan(r,null);
+  }
+  function think(r){
+    if(r.latched){r.act=(d2(r,r.home)<=1)?A.DONE:A.HOME;if(r.act===A.DONE&&r.homeT===null)r.homeT=now;return;}
+    if(r.phase==='wait'){r.act=A.WAIT;return;}
+    if(now<r.dwellUntil)return;
+    if(r.plan&&now>=r.lastCheck+1){r.lastCheck=now;check(r);}
+    if(!r.plan&&now>=r.nextPlan)makePlan(r);
+  }
+  function move(r){
+    let t=null;
+    if(r.act===A.HOME||r.act===A.WAIT)t=d2(r,r.home)>0.05?r.home:null;
+    else if(r.act!==A.DONE&&now>=r.dwellUntil&&r.plan)t=r.plan.pts[r.plan.idx];
+    if(!t)return;
+    const dx=t[0]-r.x,dy=t[1]-r.y,L=Math.hypot(dx,dy),s=V*DT;
+    if(L<=s){r.x=t[0];r.y=t[1];r.dist+=L;}else{r.x+=dx/L*s;r.y+=dy/L*s;r.dist+=s;}
+    const p=r.plan;if(!p||r.act===A.HOME||r.act===A.WAIT)return;
+    const last=p.idx===p.pts.length-1,dd=d2(r,p.pts[p.idx]);
+    if(!last&&dd<=PASS){r.visited.push([p.pts[p.idx][0],p.pts[p.idx][1],now]);p.idx++;snap(r);}
+    else if(last&&dd<=ARRIVE){r.visited.push([p.pts[p.idx][0],p.pts[p.idx][1],now]);r.dwellUntil=now+DWELL;r.plan=null;snap(r);r.nextPlan=0;}
+  }
+  function latchCheck(r){
+    if(r.latched)return;
+    let ok;if(arm.stop==='map')ok=r.nKnown>=0.9*KN;else{ok=true;for(let c=0;c<NC;c++)if(r.unk[c]>THR){ok=false;break;}}
+    if(ok){r.latched=true;r.latchT=now;r.distLatch=r.dist;r.plan=null;snap(r);}
+  }
+  const cellsOwn=r=>{let n=0;for(let c=0;c<NC;c++)if(r.unk[c]<=THR)n++;return n;};
+  function status(r){
+    const p=r.plan,nv=p&&p.kind==='route'?p.pts.length-p.idx:0;
+    switch(r.act){
+      case A.OWN:if(now<r.dwellUntil)return'Stopped 2 s for the map';
+        return p&&p.kind==='route'?`Own cells: route, ${nv} point${nv===1?'':'s'} left`:'Own cells: to the next goal';
+      case A.HELP:return`Helping R${r.helpId+1}, its list backwards`;
+      case A.SEARCH:if(now<r.dwellUntil)return'Stopped 2 s for the map';
+        return'Filling holes in its own map';
+      case A.WAIT:return d2(r,r.home)>1?'Driving home to wait':'Home, waiting for maps';
+      case A.HOME:return'Finished, driving home';
+      default:return'Finished and home';
+    }
+  }
+  function record(){
+    const f={t:now,pos:new Float32Array(N*2),act:new Uint8Array(N),prog:new Float32Array(N),cnt:new Int16Array(N),cell:new Int16Array(N),
+      link:0,fin:0,txt:[],note:[]};
+    for(const r of R){const i=r.id;f.pos[2*i]=r.x;f.pos[2*i+1]=r.y;f.act[i]=r.act;f.cell[i]=r.cell;if(r.latched)f.fin|=1<<i;
+      if(arm.stop==='map'){f.prog[i]=r.nKnown/KN;}else{const n=cellsOwn(r);f.cnt[i]=n;f.prog[i]=n/NC;}
+      f.txt[i]=status(r);
+      let note='';for(let j=0;j<N;j++){if(j===r.id)continue;const q=PI[r.id][j];if(link[q]){note=contactT[q]>=SWAP_DELAY?`swapping maps with R${j+1}`:`in contact with R${j+1}`;break;}}
+      f.note[i]=note;}
+    for(let q=0;q<P;q++)if(link[q])f.link|=1<<q;
+    frames.push(f);
+  }
+
+  for(;;){
+    for(let q=0;q<P;q++){const[a,b]=pairs[q];link[q]=Math.hypot(R[a].x-R[b].x,R[a].y-R[b].y)<=RANGE;
+      if(link[q]){contactT[q]+=DT;linkTime[q]+=DT;hear(R[a],R[b]);hear(R[b],R[a]);}else contactT[q]=0;}
+    if(step%4===0)for(let q=0;q<P;q++)if(link[q]&&contactT[q]>=SWAP_DELAY)union(R[pairs[q][0]],R[pairs[q][1]]);
+    for(const r of R)sense(r);
+    for(const r of R)for(let c=0;c<NC;c++)if(cellDoneT[c]===Infinity&&r.unk[c]<=THR)cellDoneT[c]=now;
+    if(teamCovT===null){if(arm.stop==='map'?seenCount>=0.9*KN:cellDoneT.every(v=>v<Infinity))teamCovT=now;}
+    for(const r of R)latchCheck(r);
+    if(!R.every(r=>r.latched))for(let q=0;q<P;q++)if(link[q])linkUpToLatch+=DT;
+    for(const r of R)think(r);
+    for(const r of R)move(r);
+    if(step%2===0)record();
+    if(R.every(r=>r.act===A.DONE)||now>=HORIZON){if(step%2!==0)record();break;}
+    now+=DT;step++;
+  }
+  const lastLatch=Math.max(...R.map(r=>r.latchT===null?HORIZON:r.latchT));
+  return{N,arm,frames,seenT,cellDoneT,CS,CN,NC,lists,R:R.map(r=>({snaps:r.snaps,tours:r.tours,latchT:r.latchT,home:r.home})),
+    lastLatch,teamCov:teamCovT===null?lastLatch:teamCovT,endT:frames[frames.length-1].t,censored:R.some(r=>!r.latched),
+    distPer:R.reduce((s,r)=>s+(r.distLatch===null?r.dist:r.distLatch),0)/N,
+    linkPct:P?linkUpToLatch/P/Math.max(1,lastLatch):0};
+}
+
+const sims={};
+for(const n of[2,3,4]){sims[n]={};for(const arm of ARMS){if(arm.plans&&!PLANS[arm.plans][n])continue;sims[n][arm.key]=simulate(n,arm);}}
+
+/* ---------- rendering ---------- */
+const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+let N=2,t=0,playing=false,started=false,speed=25,tMax=1,dirty=true,lastTs=null,C={};
+function readTokens(){const cs=getComputedStyle(document.documentElement),g=n=>cs.getPropertyValue(n).trim();
+  C={surface:g('--surface'),surface2:g('--surface-2'),ink:g('--ink'),muted:g('--muted'),line:g('--line'),accent:g('--accent'),
+    link:g('--link'),tint:g('--tint'),done:g('--done'),tree:g('--tree'),r:[g('--r0'),g('--r1'),g('--r2'),g('--r3')],
+    act:[g('--a-explore'),g('--a-help'),g('--a-search'),g('--a-wait'),g('--a-home'),'']};}
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const TREES=(()=>{const r=rng(41),out=[];while(out.length<278){const x=-48+96*r(),y=-48+96*r();if(Math.hypot(x,y)<6)continue;out.push([x,y]);}return out;})();
+const MONO="'IBM Plex Mono', ui-monospace, Menlo, monospace";
+
+const panelsEl=document.getElementById('panels');
+const panels=ARMS.map(arm=>{
+  const el=document.createElement('article');el.className='panel';
+  const chips=arm.chips.map((c,i)=>`<span class="chip${arm.ch.includes(i)?' ch':''}">${c}</span>`).join('');
+  el.innerHTML=`<header class="ph"><h3>${arm.name}</h3><div class="chips">${chips}</div></header>
+  <p class="prule">${arm.rule}</p>
+  <p class="absent">No PC arm with 3 robots: the PH lists already had the most radio contact of all 216 equal splits.</p>
+  <div class="mapbox"><canvas class="map" role="img" aria-label="Top-down view of the ${arm.name} toy run"></canvas></div>
+  <div class="robots"></div>
+  <canvas class="gantt" role="img" aria-label="Timeline of what each robot did in the ${arm.name} run"></canvas>
+  <dl class="stats">
+    <div><dt>${arm.stop==='map'?'Team map 90% known':'Team had every cell'}</dt><dd data-k="cov"></dd></div>
+    <div><dt>Last robot finished</dt><dd data-k="latch"></dd></div>
+    <div><dt>Driving per robot</dt><dd data-k="dist"></dd></div>
+    <div><dt>Pairs in contact</dt><dd data-k="link"></dd></div>
+  </dl>`;
+  panelsEl.appendChild(el);
+  return{arm,el,map:el.querySelector('canvas.map'),gantt:el.querySelector('canvas.gantt'),robotsEl:el.querySelector('.robots'),
+    mapStatic:document.createElement('canvas'),ganttStatic:document.createElement('canvas'),rows:[],mapW:0,ganttW:0,ganttH:0,lastTxt:[]};
+});
+const simOf=p=>sims[N][p.arm.key];
+function buildRobotRows(){
+  for(const p of panels){
+    p.robotsEl.innerHTML='';p.rows=[];p.lastTxt=[];
+    p.el.classList.toggle('off',!simOf(p));
+    if(!simOf(p))continue;
+    for(let i=0;i<N;i++){
+      const rr=document.createElement('div');rr.className='rr';
+      rr.innerHTML=`<span class="rid" style="--rc:var(--r${i})">R${i+1}</span><span class="act"><i></i><span></span></span><div class="rsub"><span class="kn"><span class="bar"><i></i></span><span class="pct"></span></span><span class="chk"></span></div>`;
+      p.robotsEl.appendChild(rr);
+      p.rows.push({sw:rr.querySelector('.act i'),txt:rr.querySelector('.act span'),bar:rr.querySelector('.bar i'),pct:rr.querySelector('.pct'),chk:rr.querySelector('.chk')});
+    }
+  }
+}
+function fillStats(){
+  for(const p of panels){const s=simOf(p);if(!s)continue;const q=k=>p.el.querySelector(`dd[data-k="${k}"]`);
+    q('cov').textContent=`${Math.round(s.teamCov)} s`;
+    q('latch').textContent=s.censored?'not by 3000 s':`${Math.round(s.lastLatch)} s`;
+    q('dist').textContent=`${Math.round(s.distPer)} m`;
+    q('link').textContent=`${Math.round(s.linkPct*100)}%`;}
+}
+function sizeCanvas(cv,w,h){const dpr=window.devicePixelRatio||1;cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);const ctx=cv.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);return ctx;}
+const MARG=6;
+function wx(w){const s=(w-2*MARG)/104;return{s,X:x=>MARG+(x+52)*s,Y:y=>MARG+(52-y)*s};}
+function drawMapStatic(p){
+  const w=p.mapW,s=simOf(p);if(!w||!s)return;const ctx=sizeCanvas(p.mapStatic,w,w),T=wx(w);
+  ctx.clearRect(0,0,w,w);
+  ctx.fillStyle=C.surface2;ctx.fillRect(T.X(-50),T.Y(50),100*T.s,100*T.s);
+  ctx.fillStyle=C.tree;const tr=Math.max(1,T.s*0.45);
+  for(const[x,y]of TREES){ctx.beginPath();ctx.arc(T.X(x),T.Y(y),tr,0,Math.PI*2);ctx.fill();}
+  ctx.strokeStyle=C.line;ctx.lineWidth=1;
+  for(let v=-50+s.CS;v<50;v+=s.CS){ctx.beginPath();ctx.moveTo(T.X(v),T.Y(50));ctx.lineTo(T.X(v),T.Y(-50));ctx.stroke();ctx.beginPath();ctx.moveTo(T.X(-50),T.Y(v));ctx.lineTo(T.X(50),T.Y(v));ctx.stroke();}
+  ctx.strokeStyle=C.muted;ctx.lineWidth=1.2;ctx.strokeRect(T.X(-50),T.Y(50),100*T.s,100*T.s);
+  if(s.CS===20){ctx.setLineDash([3,3]);ctx.strokeStyle=C.muted;ctx.strokeRect(T.X(-10),T.Y(10),20*T.s,20*T.s);ctx.setLineDash([]);}
+  if(s.lists){ // the stored lists, faint, with a start dot and chevrons
+    const cc=c=>[T.X(-40+20*(c%5)),T.Y(-40+20*Math.floor(c/5))];
+    for(const L of s.lists){const col=C.r[L.robot];ctx.strokeStyle=col;ctx.fillStyle=col;ctx.globalAlpha=0.45;ctx.lineWidth=2;
+      const pts=L.cells.map(cc);const o=(L.robot-(N-1)/2)*2.2;
+      ctx.beginPath();pts.forEach((q,k)=>k?ctx.lineTo(q[0]+o,q[1]+o):ctx.moveTo(q[0]+o,q[1]+o));ctx.stroke();
+      ctx.beginPath();ctx.arc(pts[0][0]+o,pts[0][1]+o,3.5,0,Math.PI*2);ctx.fill();
+      for(let k=1;k<pts.length-1;k++){const a=pts[k-1],b=pts[k],mx=(a[0]+b[0])/2+o,my=(a[1]+b[1])/2+o,ang=Math.atan2(b[1]-a[1],b[0]-a[0]);
+        ctx.beginPath();ctx.moveTo(mx+Math.cos(ang)*4,my+Math.sin(ang)*4);ctx.lineTo(mx+Math.cos(ang+2.5)*4,my+Math.sin(ang+2.5)*4);ctx.lineTo(mx+Math.cos(ang-2.5)*4,my+Math.sin(ang-2.5)*4);ctx.closePath();ctx.fill();}
+      ctx.globalAlpha=1;}
+  }
+  ctx.strokeStyle=C.muted;ctx.lineWidth=1;
+  for(let i=0;i<N;i++){const h=SPAWNS[i],x=T.X(h[0]),y=T.Y(h[1]);ctx.strokeRect(x-2.5,y-2.5,5,5);}
+}
+function frameAt(s,tt){const fr=s.frames;return fr[Math.min(fr.length-1,Math.max(0,Math.floor(tt)))];}
+function lerpPos(s,tt,i){const fr=s.frames,fi=Math.min(fr.length-1,Math.max(0,Math.floor(tt))),f0=fr[fi],f1=fr[Math.min(fr.length-1,fi+1)],a=Math.min(1,Math.max(0,tt-fi));
+  return[f0.pos[2*i]+(f1.pos[2*i]-f0.pos[2*i])*a,f0.pos[2*i+1]+(f1.pos[2*i+1]-f0.pos[2*i+1])*a];}
+function lastBefore(arr,tt){let lo=0,hi=arr.length-1,ans=-1;while(lo<=hi){const m=(lo+hi)>>1;if(arr[m].t<=tt){ans=m;lo=m+1;}else hi=m-1;}return ans<0?null:arr[ans];}
+function drawMap(p){
+  const w=p.mapW,s=simOf(p);if(!w||!s)return;const tt=Math.min(t,s.endT),ctx=p.map.getContext('2d'),dpr=window.devicePixelRatio||1,T=wx(w);
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,w);ctx.drawImage(p.mapStatic,0,0,w,w);
+  ctx.fillStyle=C.tint;
+  for(let k=0;k<KN;k++)if(s.seenT[k]<=tt){const x=kx(k%KG),y=kx((k/KG)|0);ctx.fillRect(T.X(x-1.25),T.Y(y+1.25),2.5*T.s+0.4,2.5*T.s+0.4);}
+  ctx.strokeStyle=C.done;ctx.globalAlpha=0.6;ctx.lineWidth=2;
+  for(let c=0;c<s.NC;c++)if(s.cellDoneT[c]<=tt){const x0=-50+s.CS*(c%s.CN),y0=-50+s.CS*Math.floor(c/s.CN);ctx.strokeRect(T.X(x0)+2.5,T.Y(y0+s.CS)+2.5,s.CS*T.s-5,s.CS*T.s-5);}
+  ctx.globalAlpha=1;
+  const f=frameAt(s,tt),pos=[];for(let i=0;i<N;i++)pos.push(lerpPos(s,tt,i));
+  const fi=Math.floor(Math.min(tt,s.frames.length-1));
+  ctx.lineWidth=1.4;
+  for(let i=0;i<N;i++){ctx.strokeStyle=C.r[i];ctx.globalAlpha=0.4;ctx.beginPath();const from=Math.max(0,fi-180);
+    for(let k=from;k<=fi;k++){const fr=s.frames[k],x=T.X(fr.pos[2*i]),y=T.Y(fr.pos[2*i+1]);k===from?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+    ctx.lineTo(T.X(pos[i][0]),T.Y(pos[i][1]));ctx.stroke();}
+  ctx.globalAlpha=1;
+  // working cell and, for the allocator arms, the robot's current tour
+  for(let i=0;i<N;i++){
+    const c=f.cell[i];if(c>=0&&!(f.fin&(1<<i))&&(f.act[i]===A.OWN||f.act[i]===A.HELP)){const x0=-50+s.CS*(c%s.CN),y0=-50+s.CS*Math.floor(c/s.CN);
+      ctx.strokeStyle=C.r[i];ctx.lineWidth=1.6;ctx.setLineDash([4,3]);ctx.strokeRect(T.X(x0)+1+i,T.Y(y0+s.CS)+1+i,s.CS*T.s-2-2*i,s.CS*T.s-2-2*i);ctx.setLineDash([]);}
+    if(p.arm.alloc&&!(f.fin&(1<<i))&&f.act[i]===A.OWN){const tr=lastBefore(s.R[i].tours,tt);
+      if(tr&&tr.cells.length>1){ctx.strokeStyle=C.r[i];ctx.globalAlpha=0.5;ctx.lineWidth=1.2;ctx.setLineDash([1.5,3]);ctx.beginPath();
+        tr.cells.forEach((cc,k)=>{const x=T.X(-50+s.CS*(cc%s.CN)+s.CS/2),y=T.Y(-50+s.CS*Math.floor(cc/s.CN)+s.CS/2);k?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+        ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;}}
+  }
+  // links
+  let q=0;
+  for(let a=0;a<N;a++)for(let b=a+1;b<N;b++,q++)if(f.link&(1<<q)){ctx.strokeStyle=C.link;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(T.X(pos[a][0]),T.Y(pos[a][1]));ctx.lineTo(T.X(pos[b][0]),T.Y(pos[b][1]));ctx.stroke();}
+  // goals and routes
+  for(let i=0;i<N;i++){
+    if(f.fin&(1<<i)||f.act[i]===A.WAIT)continue;const sn=lastBefore(s.R[i].snaps,tt);if(!sn||!sn.pts)continue;
+    const pts=sn.pts.slice(sn.idx);ctx.strokeStyle=C.ink;ctx.fillStyle=C.ink;ctx.lineWidth=1.2;
+    if(sn.kind==='goal'){const x=T.X(pts[0][0]),y=T.Y(pts[0][1]);ctx.globalAlpha=0.55;ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(T.X(pos[i][0]),T.Y(pos[i][1]));ctx.lineTo(x,y);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+      ctx.lineWidth=1.8;ctx.beginPath();ctx.moveTo(x-4,y-4);ctx.lineTo(x+4,y+4);ctx.moveTo(x+4,y-4);ctx.lineTo(x-4,y+4);ctx.stroke();}
+    else{ctx.globalAlpha=0.7;ctx.beginPath();ctx.moveTo(T.X(pos[i][0]),T.Y(pos[i][1]));for(const pt of pts)ctx.lineTo(T.X(pt[0]),T.Y(pt[1]));ctx.stroke();ctx.globalAlpha=1;
+      pts.forEach((pt,k)=>{const x=T.X(pt[0]),y=T.Y(pt[1]);if(k===pts.length-1)ctx.fillRect(x-3,y-3,6,6);else{ctx.beginPath();ctx.arc(x,y,2.2,0,Math.PI*2);ctx.fill();}});}
+  }
+  // robots
+  for(let i=0;i<N;i++){const x=T.X(pos[i][0]),y=T.Y(pos[i][1]);
+    if(f.fin&(1<<i)){ctx.strokeStyle=C.r[i];ctx.lineWidth=1.2;ctx.beginPath();ctx.arc(x,y,8.5,0,Math.PI*2);ctx.stroke();}
+    ctx.fillStyle=C.r[i];ctx.strokeStyle=C.surface;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,5.5,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle=C.ink;ctx.font=`500 10px ${MONO}`;ctx.fillText(`R${i+1}`,x+8,y-7);}
+  if(t>=s.lastLatch-0.01){const msg=s.censored?'Stopped at 3000 s':`Last robot finished at ${Math.round(s.lastLatch)} s`;ctx.font=`600 12px ${MONO}`;
+    const tw=ctx.measureText(msg).width;ctx.fillStyle=C.surface;ctx.globalAlpha=0.92;ctx.fillRect(MARG+6,MARG+6,tw+14,22);ctx.globalAlpha=1;
+    ctx.strokeStyle=C.accent;ctx.lineWidth=1;ctx.strokeRect(MARG+6.5,MARG+6.5,tw+13,21);ctx.fillStyle=C.ink;ctx.fillText(msg,MARG+13,MARG+21);}
+}
+const G={padL:28,padR:10,top:8,rowH:10,gap:5,linkH:6};
+function ganttHeight(){return G.top+N*(G.rowH+G.gap)+G.linkH+22;}
+function gX(w,tt){return G.padL+tt/tMax*(w-G.padL-G.padR);}
+function drawGanttStatic(p){
+  const w=p.ganttW,h=p.ganttH,s=simOf(p);if(!w||!s)return;const ctx=sizeCanvas(p.ganttStatic,w,h);
+  ctx.clearRect(0,0,w,h);
+  const axisY=G.top+N*(G.rowH+G.gap)+G.linkH+4;ctx.font=`10px ${MONO}`;
+  for(let v=0;v<=tMax;v+=300){const x=gX(w,v);ctx.strokeStyle=C.line;ctx.lineWidth=1;ctx.setLineDash([2,3]);ctx.beginPath();ctx.moveTo(x,G.top-4);ctx.lineTo(x,axisY);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle=C.muted;ctx.textAlign=v===0?'left':(v+300>tMax?'right':'center');ctx.fillText(v===0?'0 s':String(v),x,axisY+12);}
+  ctx.textAlign='left';const fr=s.frames;
+  for(let i=0;i<N;i++){const y=G.top+i*(G.rowH+G.gap);ctx.fillStyle=C.r[i];ctx.font=`500 10px ${MONO}`;ctx.fillText(`R${i+1}`,0,y+G.rowH-1);
+    ctx.fillStyle=C.surface2;ctx.fillRect(G.padL,y,gX(w,s.endT)-G.padL,G.rowH);
+    let k0=0;
+    for(let k=1;k<=fr.length;k++){if(k===fr.length||fr[k].act[i]!==fr[k0].act[i]){const a=fr[k0].act[i];
+      if(a!==A.DONE){ctx.fillStyle=C.act[a];const x0=gX(w,fr[k0].t),x1=gX(w,k<fr.length?fr[k].t:s.endT);ctx.fillRect(x0,y,Math.max(1,x1-x0),G.rowH);}k0=k;}}
+    const lt=s.R[i].latchT;if(lt!==null){ctx.fillStyle=C.ink;ctx.fillRect(gX(w,lt)-1,y-2,2,G.rowH+4);}}
+  const ly=G.top+N*(G.rowH+G.gap);ctx.fillStyle=C.muted;ctx.font=`10px ${MONO}`;ctx.fillText('link',0,ly+G.linkH);
+  const P=N*(N-1)/2;
+  for(let k=0;k<fr.length;k++){let n=0;for(let b=0;b<P;b++)if(fr[k].link&(1<<b))n++;if(!n)continue;
+    ctx.globalAlpha=n/P;ctx.fillStyle=C.link;const x0=gX(w,fr[k].t),x1=gX(w,k+1<fr.length?fr[k+1].t:s.endT);ctx.fillRect(x0,ly,Math.max(0.6,x1-x0+0.3),G.linkH);}
+  ctx.globalAlpha=1;
+}
+function drawGantt(p){
+  const w=p.ganttW,h=p.ganttH;if(!w||!simOf(p))return;const ctx=p.gantt.getContext('2d'),dpr=window.devicePixelRatio||1;
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,w,h);ctx.drawImage(p.ganttStatic,0,0,w,h);
+  const x=gX(w,t),axisY=G.top+N*(G.rowH+G.gap)+G.linkH+2;
+  ctx.globalAlpha=0.86;ctx.fillStyle=C.surface;ctx.fillRect(x,G.top-6,w-x,axisY-G.top+6);ctx.globalAlpha=1;
+  ctx.strokeStyle=C.ink;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x,G.top-6);ctx.lineTo(x,axisY);ctx.stroke();
+}
+function updateRows(p){
+  const s=simOf(p);if(!s)return;const f=frameAt(s,Math.min(t,s.endT));
+  for(let i=0;i<N;i++){const row=p.rows[i],a=f.act[i];
+    const pc=s.arm.stop==='map'?`${Math.round(f.prog[i]*100)}% known`:`${f.cnt[i]}/${s.NC} cells`;
+    const key=`${a}|${f.txt[i]}|${f.note[i]}|${pc}`;if(p.lastTxt[i]===key)continue;p.lastTxt[i]=key;
+    row.sw.style.background=a===A.DONE?'transparent':C.act[a];row.sw.style.border=a===A.DONE?`1px solid ${C.line}`:'none';
+    row.txt.textContent=f.txt[i];row.chk.textContent=f.note[i];
+    row.bar.style.width=Math.min(100,(s.arm.stop==='map'?f.prog[i]/0.9:f.prog[i])*100)+'%';row.pct.textContent=pc;}
+}
+function layout(){
+  for(const p of panels){if(!simOf(p)){p.mapW=0;p.ganttW=0;continue;}
+    const mw=Math.round(p.map.getBoundingClientRect().width),gw=Math.round(p.gantt.getBoundingClientRect().width),gh=ganttHeight();
+    if(mw!==p.mapW){p.mapW=mw;sizeCanvas(p.map,mw,mw);drawMapStatic(p);}
+    if(gw!==p.ganttW||gh!==p.ganttH){p.ganttW=gw;p.ganttH=gh;p.gantt.style.height=gh+'px';sizeCanvas(p.gantt,gw,gh);drawGanttStatic(p);}}
+  dirty=true;
+}
+function redrawStatics(){for(const p of panels){drawMapStatic(p);drawGanttStatic(p);p.lastTxt=[];}dirty=true;}
+const scrub=document.getElementById('scrub'),clock=document.getElementById('clock'),playBtn=document.getElementById('play');
+function setN(n){N=n;tMax=Math.ceil(Math.max(...Object.values(sims[N]).map(s=>s.endT))/100)*100;scrub.max=String(tMax);
+  buildRobotRows();fillStats();for(const p of panels){p.ganttW=0;p.mapW=0;}layout();redrawStatics();}
+function render(){scrub.value=String(Math.round(t));clock.textContent=`t = ${Math.round(t)} s`;for(const p of panels){drawMap(p);drawGantt(p);updateRows(p);}}
+function updatePlay(){playBtn.textContent=playing?'Pause':'Play';playBtn.setAttribute('aria-pressed',String(playing));}
+function loop(ts){
+  if(lastTs===null)lastTs=ts;const dt=Math.min(0.1,(ts-lastTs)/1000);lastTs=ts;
+  if(playing){t=Math.min(tMax,t+dt*speed);dirty=true;if(t>=tMax){playing=false;updatePlay();}}
+  if(dirty){render();dirty=false;}
+  requestAnimationFrame(loop);
+}
+playBtn.addEventListener('click',()=>{if(!playing&&t>=tMax)t=0;playing=!playing;updatePlay();dirty=true;});
+document.getElementById('restart').addEventListener('click',()=>{t=0;playing=true;updatePlay();dirty=true;});
+document.getElementById('speed').addEventListener('change',e=>{speed=Number(e.target.value)||25;});
+scrub.addEventListener('input',()=>{t=Number(scrub.value);dirty=true;});
+for(const id of['n2','n3','n4'])document.getElementById(id).addEventListener('change',e=>{if(e.target.checked){setN(Number(e.target.value));t=0;playing=!reduced;updatePlay();}});
+new ResizeObserver(()=>layout()).observe(panelsEl);
+const onTheme=()=>{readTokens();redrawStatics();};
+const mq=window.matchMedia('(prefers-color-scheme: dark)');if(mq.addEventListener)mq.addEventListener('change',onTheme);
+new MutationObserver(onTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+readTokens();setN(2);
+{const h=new URLSearchParams(location.hash.slice(1));const n=h.get('n');
+  if(n==='3'||n==='4'){document.getElementById('n'+n).checked=true;setN(Number(n));}
+  if(h.has('t')){t=Math.min(tMax,Math.max(0,Number(h.get('t'))||0));playing=false;}}
+updatePlay();
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{redrawStatics();});
+if(/debug/.test(location.hash)){const d=document.getElementById('dbg');d.hidden=false;const out=[];
+  for(const n of[2,3,4])for(const a of ARMS){const s=sims[n][a.key];if(!s)continue;
+    out.push(`N=${n} ${a.key}: cov ${Math.round(s.teamCov)} last ${Math.round(s.lastLatch)}${s.censored?' CENSORED':''} end ${Math.round(s.endT)} dist ${Math.round(s.distPer)} link ${(s.linkPct*100).toFixed(0)}% latches ${s.R.map(r=>r.latchT==null?'-':Math.round(r.latchT)).join(',')}`);}
+  out.push(`scrollW ${document.documentElement.scrollWidth} innerW ${window.innerWidth}`);
+  d.textContent+=out.join('\n');}
+if(!reduced&&'IntersectionObserver'in window)new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting&&!started){started=true;playing=true;updatePlay();}}),{threshold:0.15}).observe(panelsEl);
+requestAnimationFrame(loop);
+})();
+</script>
+
+</body>
+</html>
