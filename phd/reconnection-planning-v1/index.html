@@ -7,7 +7,7 @@
 <title>Reconnection Planning V1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Noto+Sans:wght@400;600;700&family=Noto+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
   --bg:#F1F4EF; --surface:#FFFFFF; --surface-2:#F6F8F4; --ink:#1B231F; --muted:#56635B; --line:#D3DBD4;
@@ -20,28 +20,6 @@
   --display:"Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
   --body:"Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#0F1411; --surface:#161D19; --surface-2:#1B241F; --ink:#E1E8E3; --muted:#97A59C; --line:#2C3730;
-    --accent:#86CBA4; --link:#5CCB8B; --tint:rgba(134,203,164,0.12); --tree:rgba(170,204,182,0.24); --no:#8E9B93;
-    --r0:#7FA9F5; --r1:#F07CA9; --r2:#45C8C0;
-    --fog:rgba(0,0,0,0.55); --unseen:#0C100E; --cov:rgba(92,203,139,0.16); --cov-edge:rgba(134,203,164,0.45);
-    --fr:#B795F0; --fr-soft:rgba(183,149,240,0.24); --bad:#F08A6E; --good:#6FD39B;
-    --a-explore:#3E5B49; --a-trip:#D8A13A; --a-hold:#56605A; --a-chase:#EE7B50; --a-follow:#F3A27F; --a-wait:#7D84A2; --a-home:#A6AFB8;
-    --on-bg:#203A2B; --on-ink:#9FDDB9;
-    color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#0F1411; --surface:#161D19; --surface-2:#1B241F; --ink:#E1E8E3; --muted:#97A59C; --line:#2C3730;
-  --accent:#86CBA4; --link:#5CCB8B; --tint:rgba(134,203,164,0.12); --tree:rgba(170,204,182,0.24); --no:#8E9B93;
-  --r0:#7FA9F5; --r1:#F07CA9; --r2:#45C8C0;
-  --fog:rgba(0,0,0,0.55); --unseen:#0C100E; --cov:rgba(92,203,139,0.16); --cov-edge:rgba(134,203,164,0.45);
-  --fr:#B795F0; --fr-soft:rgba(183,149,240,0.24); --bad:#F08A6E; --good:#6FD39B;
-  --a-explore:#3E5B49; --a-trip:#D8A13A; --a-hold:#56605A; --a-chase:#EE7B50; --a-follow:#F3A27F; --a-wait:#7D84A2; --a-home:#A6AFB8;
-  --on-bg:#203A2B; --on-ink:#9FDDB9;
-  color-scheme:dark;
 }
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
 .wrap{max-width:1240px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;display:flex;flex-direction:column;gap:44px}
@@ -208,6 +186,80 @@ table.ladder td.arm:nth-child(7) span::before{content:"hybrid"}
 table.nums{border-collapse:collapse;width:100%;font-size:15px}
 table.nums td{padding:6px 8px 6px 0;border-bottom:1px solid var(--line);vertical-align:top}
 table.nums td.n{font-family:var(--mono);font-size:13.5px;font-weight:500;color:var(--accent);white-space:nowrap;width:1%;padding-right:14px;font-variant-numeric:tabular-nums}
+/* Project-page theme for the explainer pages: a white academic project page
+   (the look of pages like nerfies.github.io, written from scratch, no template code).
+   Append AFTER a page's base CSS, and strip the base's dark-mode blocks (theme.py does both).
+   Light only, by request: white page, Google Sans titles, Noto Sans text, dark pill buttons,
+   light grey full-width bands behind the interactive scenes.
+   Figure colours (robots, coverage, activities) stay with the page; this file sets the neutrals. */
+:root{
+  color-scheme:light;
+  --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F5F5F5; --band:#F5F5F5; --foot:#FAFAFA;
+  --ink:#363636; --text:#4A4A4A; --muted:#6F6F6F; --line:#DBDBDB; --href:#3273DC;
+  --accent:#363636; --on-bg:#EEF3FC; --on-ink:#2160C4;
+  --display:"Google Sans", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --body:"Noto Sans", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --mono:"Noto Sans Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--body);font-size:16px;line-height:1.6}
+h1,h2,h3,h4{font-family:var(--display);color:var(--ink);text-wrap:balance}
+a{color:var(--href);text-decoration:none}
+a:hover{text-decoration:underline}
+.wrap{max-width:1120px;gap:72px;padding-block:0}
+
+/* hero */
+header.top{align-items:center;text-align:center;gap:18px;padding-block:64px 4px}
+header.top h1{font-size:clamp(34px,5.4vw,48px);font-weight:700;letter-spacing:-0.01em;line-height:1.15}
+header.top .subtitle{font-family:var(--display);font-size:clamp(19px,2.5vw,24px);line-height:1.35;color:var(--text);max-width:40ch;text-wrap:balance}
+.toc{justify-content:center;gap:10px;padding-block:6px}
+.toc a{display:inline-flex;align-items:center;gap:8px;font-family:var(--display);font-weight:500;font-size:15px;color:#FFFFFF;background:var(--ink);border:0;border-radius:999px;padding:7px 16px 7px 8px;text-decoration:none}
+.toc a b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:rgba(255,255,255,0.18);color:#FFFFFF;font-size:12px;font-weight:500;margin:0}
+.toc a:hover{background:#4A4A4A;text-decoration:none}
+.lede{max-width:760px;font-size:17px;text-align:justify;hyphens:auto}
+
+/* sections */
+.part{gap:32px}
+.part-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;border-top:0;padding-top:0}
+.part-head .letter{font-family:var(--mono);font-size:12px;font-weight:500;line-height:1.2;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted)}
+.part-head .letter::before{content:"Part "}
+.part-head h2{font-size:clamp(26px,3.3vw,32px);font-weight:700;line-height:1.2}
+.part-head p{max-width:760px;color:var(--text);text-align:justify;hyphens:auto}
+
+/* interactive scenes sit on a full-width light band; panels inside turn white */
+.stage{--surface-2:#FFFFFF;background:var(--band);border:0;border-radius:0;box-shadow:0 0 0 100vmax var(--band);clip-path:inset(0 -100vmax);padding:36px 0;gap:20px}
+.stage-head{align-items:center;text-align:center;gap:8px}
+.stage-head h3{font-size:clamp(21px,2.5vw,24px);font-weight:700;line-height:1.25}
+.stage-head p{max-width:72ch}
+.tag{align-self:center;background:#FFFFFF;color:var(--muted)}
+canvas.cv{border-radius:4px}
+
+/* controls: pill buttons like a project page's link buttons */
+.btn{font-family:var(--display);font-weight:500;font-size:15px;border-radius:999px;padding:6px 16px;background:#FFFFFF;border:1px solid var(--line);color:var(--ink)}
+.btn.primary{background:var(--ink);border-color:var(--ink);color:#FFFFFF}
+.btn:hover:not(:disabled){border-color:#B5B5B5}
+.btn.primary:hover:not(:disabled){background:#4A4A4A}
+.dots button.on{background:var(--ink);border-color:var(--ink);color:#FFFFFF}
+input[type=range]{accent-color:var(--href)}
+.toc a:focus-visible,.btn:focus-visible,.log button:focus-visible,select:focus-visible,input:focus-visible,.dots button:focus-visible{outline:2px solid var(--href);outline-offset:2px}
+.seg{border-radius:999px}
+.seg input:checked+label{background:var(--ink);color:#FFFFFF}
+
+/* text blocks */
+.rule{border-radius:6px}
+.how li::marker{color:var(--ink)}
+.note{color:var(--muted)}
+.measured{border:0;border-radius:0;padding:0}
+.res{border-top:1px solid var(--line)}
+.res .fig{font-weight:700;color:var(--ink)}
+.num-h{border-bottom:1px solid var(--line)}
+table.nums td.n{color:var(--ink)}
+td.arm .pick{background:var(--ink);color:#FFFFFF}
+
+/* footer band */
+.foot{background:var(--foot);box-shadow:0 0 0 100vmax var(--foot);clip-path:inset(0 -100vmax);padding-block:40px 56px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font-size:14px;color:var(--muted)}
+.foot b{font-family:var(--display);font-weight:500;font-size:15px;color:var(--ink)}
+@media (max-width:640px){header.top{padding-block:40px 0}.wrap{gap:56px}.stage{padding-block:28px}}
+
 [hidden]{display:none!important}
 </style>
 </head>
@@ -215,8 +267,8 @@ table.nums td.n{font-family:var(--mono);font-size:13.5px;font-weight:500;color:v
 
 <div class="wrap">
 <header class="top">
-  <p class="eyebrow">Reconnection Planning V1</p>
-  <h1>How the robots explore, and how they get back in touch</h1>
+  <h1>Reconnection Planning V1</h1>
+  <p class="subtitle">How the robots explore, and how they get back in touch</p>
   <p class="lede">A team of robots maps a forest. Each robot picks its own next goal, and robots swap maps whenever their radios reach each other. The four arms differ only in what a robot does to get back in touch. The scenes below are small toys. Measured results follow them, and every number the rules use is listed at the end.</p>
   <nav class="toc" aria-label="Sections">
     <a href="#explore"><b>A</b>Exploring</a>
@@ -661,6 +713,7 @@ table.nums td.n{font-family:var(--mono);font-size:13.5px;font-weight:500;color:v
   </div>
   <p class="note">The toys shrink a few of these to fit the screen: 0.5 m map squares, 12 m rays, and in the arm scenes a radio that reaches 18 m. Toy robots drive at 0.44 m/s, about what the simulated robots manage.</p>
 </section>
+<footer class="foot"><b>Reconnection Planning V1</b><span>The toy scenes run in your browser. The measured results come from the full simulator runs.</span></footer>
 </div>
 
 <script>
