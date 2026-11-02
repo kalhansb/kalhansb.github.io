@@ -331,6 +331,27 @@ input[type=range]{accent-color:var(--href)}
 table.nums td.n{color:var(--ink)}
 td.arm .pick{background:var(--ink);color:#FFFFFF}
 
+/* results tables: one per comparison, paper-style rules, mission end first */
+.rt-list{display:flex;flex-direction:column;gap:44px}
+.rt-block{display:flex;flex-direction:column;gap:10px}
+.rt-block h3{font-size:clamp(19px,2.2vw,21px);font-weight:700;line-height:1.3}
+.rt-block>p,.rt-block>ul{max-width:760px}
+.rt-block ul{display:flex;flex-direction:column;gap:6px;padding-left:20px}
+.rt-block ul b{color:var(--ink)}
+.rtbox{overflow-x:auto}
+table.rt{border-collapse:collapse;width:100%;min-width:480px;font-size:15px;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
+table.rt th{font-family:var(--display);font-weight:500;color:var(--ink);text-align:right;padding:8px 10px;border-bottom:1px solid var(--ink);vertical-align:bottom}
+table.rt th:first-child{text-align:left}
+table.rt td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);vertical-align:top}
+table.rt td:first-child{text-align:left;color:var(--ink)}
+table.rt tbody tr:last-child td{border-bottom:0}
+table.rt tr.key td{background:var(--band)}
+table.rt tr.key td:first-child{font-weight:600}
+table.rt .v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--ink)}
+table.rt .d{display:block;font-size:13px;line-height:1.35;color:var(--muted)}
+table.rt .d.c{font-weight:700;color:var(--ink)}
+table.rt.dec td:nth-child(2) .v{font-weight:700}
+
 /* footer band */
 .foot{background:var(--foot);box-shadow:0 0 0 100vmax var(--foot);clip-path:inset(0 -100vmax);padding-block:40px 56px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font-size:14px;color:var(--muted)}
 .foot b{font-family:var(--display);font-weight:500;font-size:15px;color:var(--ink)}
@@ -675,34 +696,85 @@ td.arm .pick{background:var(--ink);color:#FFFFFF}
 <!-- ================= PART E ================= -->
 <section class="part" id="measured">
   <div class="part-head"><span class="letter">E</span><h2>What the runs showed</h2>
-    <p>Measured in the full simulator, not in the toys: 30 runs for each arm with 2, 3 and 4 robots (PC with 2 and 4 only). “Finished” is when the last robot’s map passed the finish rule. These times are not comparable with V1’s, because V2’s finish rule is stricter.</p></div>
-  <div class="measured">
-    <div class="res-grid six">
-      <div class="res"><h3>Routes: A against R</h3>
-        <p>The last robot finished 18%, 11% and 12% sooner with 2, 3 and 4 robots, and each robot drove 15–18% less.</p>
-        <p class="fig">Finish: 1198 → 982 s, 1062 → 941 s, 1124 → 991 s<small>with 2, 3 and 4 robots</small></p></div>
-      <div class="res"><h3>Stored lists: PH against A</h3>
-        <p>25%, 28% and 33% sooner, driving 24–36% less. PH was also the steadiest arm. With 2 robots its runs spread over 678–790 s, against 667–1421 s for A.</p>
-        <p class="fig">Finish: 732, 682 and 663 s<small>A: 982, 941 and 991 s</small></p></div>
-      <div class="res"><h3>Where PH’s lead comes from</h3>
-        <p>Part of it is covering the cells sooner. The team had every cell at 659, 482 and 414 s in PH, against 835, 590 and 516 s in A.</p>
-        <p>The rest is the wait for maps. With 3 or 4 robots, R and A spent 29–48% of the run (308–474 s) after the team had every cell, while the maps were still reaching the last robot. In PH the robots meet at home, and that wait was 200 s and 249 s.</p>
-        <p class="fig">Share of the lead from covering sooner: 70%, 42%, 31%<small>with 2, 3 and 4 robots</small></p></div>
-      <div class="res"><h3>Radio contact: PH against A</h3>
-        <p>Fixed lists change how often robots are in range. With 2 robots, PH splits the forest into west and east, and pairs were in contact 23.7% of the time against 28.9% in A. With 4 robots it went the other way: 43.0% against 37.0%. With 3, about the same (36.2% against 34.6%).</p>
-        <p>Time cut off in gaps of 2 minutes or more, per robot: 565 s in A and 532 s in PH with 2 robots, 271 and 286 s with 3, 163 and 164 s with 4. As a share of the run, PH looks worse with 2 robots (73% against 55%), only because its runs are shorter.</p>
-        <p class="fig">Longest gap between two robots: 421 → 532 s, 547 → 409 s, 515 → 367 s<small>A → PH, with 2, 3 and 4 robots</small></p></div>
-      <div class="res"><h3>Contact-aware lists: PC against PH</h3>
-        <p>With 2 robots, PC’s north–south split kept pairs in contact 27.8% of the time against 23.7%, cut the time cut off in long gaps from 532 to 333 s per robot, and shortened the longest gap from 532 to 314 s. With 4 robots: contact 45.4% against 43.0%, long gaps 164 → 103 s per robot.</p>
-        <p>Fewer PC robots had to wait at home: 22 of 60 against 48 of 60 with 2 robots.</p>
-        <p class="fig">Finish: 674 against 732 s (8% sooner), 637 against 663 s (4%)<small>with 2 and 4 robots</small></p>
-        <p class="note">PC’s robots finish farther from home. Counting the drive home, PC took 823 s against PH’s 814 s with 2 robots (no clear difference), and 673 against 699 s with 4.</p></div>
-      <div class="res"><h3>A second forest</h3>
-        <p>The same tests on a patchy forest: the same 257 trees per hectare, most of them gathered into 19 thickets. PH beat A again with every team size: 16%, 22% and 34% sooner (998 → 841 s, 771 → 605 s, 932 → 618 s). PC beat PH with 2 robots, 18% sooner (841 → 690 s), but not with 4 (618 → 601 s, no clear difference).</p>
-        <p class="fig">4 of the 5 tests clear<small>240 runs</small></p>
-        <p class="note">With 2 robots, PH’s patchy runs spread over 717–1240 s. In 6 of its 30 runs, the helping robot redid 3 or more cells its teammate had already finished, because it hadn’t heard they were finished.</p></div>
-    </div>
-    <p class="note">A difference counts as clear when it holds up after correcting for the many comparisons made at once. In the main forest, all six planned tests (A against R and PH against A, with each team size) and all four PC tests are clear. No run was cut off unfinished.</p>
+    <p>Measured in the full simulator, not in the toys: 30 runs for each arm and team size (PC with 2 and 4 robots only). Each table sets an arm against the one it changes, as means over the runs, and every table starts with the same measure: mission end, when the last robot is back home. Contact and gaps are counted from the start until the last robot finishes. A change in bold is clear: it holds up after correcting for the many comparisons made at once. These times are not comparable with V1’s, because V2’s finish rule is stricter.</p></div>
+  <div class="measured rt-list">
+  <div class="rt-block"><h3>A against R: a route instead of one goal at a time</h3>
+  <p>Routes cut the driving by about a sixth with every team size, and the last robot finished 11–18% sooner. Mission end moved with it, though with 3 robots that gain is not clear. Radio contact showed no clear change.</p>
+  <div class="rtbox"><table class="rt" aria-label="A against R">
+  <thead><tr><th>R → A</th><th>2 robots</th><th>3 robots</th><th>4 robots</th></tr></thead>
+  <tbody>
+    <tr class="key"><td>Mission end: every robot home (s)</td><td><span class="v">1343 → 1131</span><span class="d c">−16%</span></td><td><span class="v">1209 → 1092</span><span class="d">−10%, not clear</span></td><td><span class="v">1268 → 1111</span><span class="d c">−12%</span></td></tr>
+    <tr><td>Last robot finished (s)</td><td><span class="v">1198 → 982</span><span class="d c">−18%</span></td><td><span class="v">1062 → 941</span><span class="d c">−11%</span></td><td><span class="v">1124 → 991</span><span class="d c">−12%</span></td></tr>
+    <tr><td>Driving per robot, to finishing (m)</td><td><span class="v">460 → 375</span><span class="d c">−18%</span></td><td><span class="v">368 → 312</span><span class="d c">−15%</span></td><td><span class="v">372 → 311</span><span class="d c">−16%</span></td></tr>
+    <tr><td>Pairs in contact (% of the time)</td><td><span class="v">31.3 → 28.9</span><span class="d">−2.4 points, not clear</span></td><td><span class="v">33.3 → 34.6</span><span class="d">+1.3 points, not clear</span></td><td><span class="v">34.4 → 37.0</span><span class="d">+2.6 points, not clear</span></td></tr>
+    <tr><td>Cut off in gaps of 2 min or more, per robot (s)</td><td><span class="v">629 → 565</span><span class="d">−10%, not clear</span></td><td><span class="v">318 → 271</span><span class="d">−15%, not clear</span></td><td><span class="v">185 → 163</span><span class="d">−12%, not clear</span></td></tr>
+    <tr><td>Longest gap between any two robots (s)</td><td><span class="v">424 → 421</span><span class="d">−1%, not clear</span></td><td><span class="v">522 → 547</span><span class="d">+5%, not clear</span></td><td><span class="v">596 → 515</span><span class="d">−14%, not clear</span></td></tr>
+  </tbody>
+</table></div>
+  </div>
+
+  <div class="rt-block"><h3>PH against A: stored lists instead of sharing out as it goes</h3>
+  <p>The biggest step: mission end 28–37% sooner and 24–36% less driving. Contact changed clearly only with 4 robots, 6 points more, and with 3 or 4 robots the longest gap between two robots was a quarter shorter or more. PH was also far steadier than A: with 2 robots its mission end spread over 754–903 s, against 824–1596 s for A.</p>
+  <div class="rtbox"><table class="rt" aria-label="PH against A">
+  <thead><tr><th>A → PH</th><th>2 robots</th><th>3 robots</th><th>4 robots</th></tr></thead>
+  <tbody>
+    <tr class="key"><td>Mission end: every robot home (s)</td><td><span class="v">1131 → 814</span><span class="d c">−28%</span></td><td><span class="v">1092 → 740</span><span class="d c">−32%</span></td><td><span class="v">1111 → 699</span><span class="d c">−37%</span></td></tr>
+    <tr><td>Last robot finished (s)</td><td><span class="v">982 → 732</span><span class="d c">−25%</span></td><td><span class="v">941 → 682</span><span class="d c">−28%</span></td><td><span class="v">991 → 663</span><span class="d c">−33%</span></td></tr>
+    <tr><td>Driving per robot, to finishing (m)</td><td><span class="v">375 → 278</span><span class="d c">−26%</span></td><td><span class="v">312 → 237</span><span class="d c">−24%</span></td><td><span class="v">311 → 200</span><span class="d c">−36%</span></td></tr>
+    <tr><td>Pairs in contact (% of the time)</td><td><span class="v">28.9 → 23.7</span><span class="d">−5.2 points, not clear</span></td><td><span class="v">34.6 → 36.2</span><span class="d">+1.6 points, not clear</span></td><td><span class="v">37.0 → 43.0</span><span class="d c">+6.0 points</span></td></tr>
+    <tr><td>Cut off in gaps of 2 min or more, per robot (s)</td><td><span class="v">565 → 532</span><span class="d">−6%, not clear</span></td><td><span class="v">271 → 286</span><span class="d">+5%, not clear</span></td><td><span class="v">163 → 164</span><span class="d">±0%, not clear</span></td></tr>
+    <tr><td>Longest gap between any two robots (s)</td><td><span class="v">421 → 532</span><span class="d">+26%, not clear</span></td><td><span class="v">547 → 409</span><span class="d c">−25%</span></td><td><span class="v">515 → 367</span><span class="d c">−29%</span></td></tr>
+  </tbody>
+</table></div>
+  </div>
+
+  <div class="rt-block"><h3>PC against PH: lists picked for radio contact</h3>
+  <p>PC kept the robots in contact more and cut the time in long gaps by more than a third. Its last robot finished 8% and 4% sooner. At mission end that lead is gone with 2 robots, and not clear with 4. The reason is where the robots finish: a robot finishes wherever its own map passes the finish rule. PC’s two lists were picked for contact late in the run, so both end on the west side, and its robots swap maps and finish out there, 42 m from home on average against 15 m for PH. The drive back costs PC 67 s. With 4 robots both arms finish at home.</p>
+  <div class="rtbox"><table class="rt" aria-label="PC against PH">
+  <thead><tr><th>PH → PC</th><th>2 robots</th><th>4 robots</th></tr></thead>
+  <tbody>
+    <tr class="key"><td>Mission end: every robot home (s)</td><td><span class="v">814 → 823</span><span class="d">+1%, not clear</span></td><td><span class="v">699 → 673</span><span class="d">−4%, not clear</span></td></tr>
+    <tr><td>Last robot finished (s)</td><td><span class="v">732 → 674</span><span class="d c">−8%</span></td><td><span class="v">663 → 637</span><span class="d c">−4%</span></td></tr>
+    <tr><td>Driving per robot, to finishing (m)</td><td><span class="v">278 → 261</span><span class="d c">−6%</span></td><td><span class="v">200 → 194</span><span class="d">−3%, not clear</span></td></tr>
+    <tr><td>Pairs in contact (% of the time)</td><td><span class="v">23.7 → 27.8</span><span class="d c">+4.1 points</span></td><td><span class="v">43.0 → 45.4</span><span class="d c">+2.4 points</span></td></tr>
+    <tr><td>Cut off in gaps of 2 min or more, per robot (s)</td><td><span class="v">532 → 333</span><span class="d c">−37%</span></td><td><span class="v">164 → 103</span><span class="d c">−37%</span></td></tr>
+    <tr><td>Longest gap between any two robots (s)</td><td><span class="v">532 → 314</span><span class="d c">−41%</span></td><td><span class="v">367 → 372</span><span class="d">+1%, not clear</span></td></tr>
+  </tbody>
+</table></div>
+  </div>
+
+  <div class="rt-block"><h3>Where the mission-end differences come from</h3>
+  <p>Each difference splits into three parts that add up: the team covering every cell sooner (between them, on the robots’ own maps); the maps then reaching the last robot sooner, until its own map passes the finish rule; and the time from that last finish to everyone home, which is mostly the drive home.</p>
+  <div class="rtbox"><table class="rt dec" aria-label="Where the mission-end differences come from">
+  <thead><tr><th>Seconds sooner</th><th>Mission end</th><th>= every cell covered</th><th>+ maps reach the last robot</th><th>+ last finish to all home</th></tr></thead>
+  <tbody>
+    <tr><td>A against R, 2 robots</td><td><span class="v">+212</span></td><td><span class="v">+251</span></td><td><span class="v">−35</span></td><td><span class="v">−4</span></td></tr>
+    <tr><td>A against R, 3 robots</td><td><span class="v">+117</span></td><td><span class="v">+164</span></td><td><span class="v">−43</span></td><td><span class="v">−4</span></td></tr>
+    <tr><td>A against R, 4 robots</td><td><span class="v">+157</span></td><td><span class="v">+153</span></td><td><span class="v">−19</span></td><td><span class="v">+23</span></td></tr>
+    <tr><td>PH against A, 2 robots</td><td><span class="v">+317</span></td><td><span class="v">+176</span></td><td><span class="v">+75</span></td><td><span class="v">+66</span></td></tr>
+    <tr><td>PH against A, 3 robots</td><td><span class="v">+352</span></td><td><span class="v">+108</span></td><td><span class="v">+151</span></td><td><span class="v">+93</span></td></tr>
+    <tr><td>PH against A, 4 robots</td><td><span class="v">+412</span></td><td><span class="v">+102</span></td><td><span class="v">+226</span></td><td><span class="v">+84</span></td></tr>
+    <tr><td>PC against PH, 2 robots</td><td><span class="v">−9</span></td><td><span class="v">+20</span></td><td><span class="v">+38</span></td><td><span class="v">−67</span></td></tr>
+    <tr><td>PC against PH, 4 robots</td><td><span class="v">+26</span></td><td><span class="v">−4</span></td><td><span class="v">+30</span></td><td><span class="v">0</span></td></tr>
+  </tbody>
+</table></div>
+  <p>A gains by covering the cells sooner, then waits a little longer for maps. PH gains on all three. With 3 or 4 robots it gains most on the wait for maps: its robots finish at or near home, where they meet, while A’s finish about 40 m out.</p>
+  </div>
+  <div class="rt-block"><h3>A second forest</h3>
+  <p>The same tests on a patchy forest: the same 257 trees per hectare, most of them gathered into 19 thickets. PH beat A again with every team size, at mission end too. PC beat PH with 2 robots, including at mission end, but not with 4.</p>
+  <div class="rtbox"><table class="rt" aria-label="Results in the patchy forest">
+  <thead><tr><th>Patchy forest</th><th>2 robots</th><th>3 robots</th><th>4 robots</th></tr></thead>
+  <tbody>
+    <tr class="key"><td>PH against A: mission end: every robot home (s)</td><td><span class="v">1131 → 909</span><span class="d c">−20%</span></td><td><span class="v">896 → 682</span><span class="d c">−24%</span></td><td><span class="v">1066 → 657</span><span class="d c">−38%</span></td></tr>
+    <tr><td>PH against A: last robot finished (s)</td><td><span class="v">998 → 841</span><span class="d c">−16%</span></td><td><span class="v">771 → 605</span><span class="d c">−22%</span></td><td><span class="v">932 → 618</span><span class="d c">−34%</span></td></tr>
+    <tr class="key"><td>PC against PH: mission end: every robot home (s)</td><td><span class="v">909 → 809</span><span class="d c">−11%</span></td><td><span class="v">–</span></td><td><span class="v">657 → 639</span><span class="d">−3%, not clear</span></td></tr>
+    <tr><td>PC against PH: last robot finished (s)</td><td><span class="v">841 → 690</span><span class="d c">−18%</span></td><td><span class="v">–</span></td><td><span class="v">618 → 601</span><span class="d">−3%, not clear</span></td></tr>
+  </tbody>
+</table></div>
+  <p class="note">The planned tests here were the five on the last robot finishing: 4 of the 5 are clear (240 runs). With 2 robots, PH’s patchy runs were less steady (mission end 793–1388 s): in 6 of its 30 runs, the helping robot redid 3 or more cells its teammate had already finished, because it hadn’t heard they were finished.</p>
+  </div>
+
+    <p class="note">In the main forest, all six planned tests (A against R and PH against A on the last robot finishing, with each team size) and all four PC tests (the last robot finishing and contact, with 2 and 4 robots) are clear. No run was cut off unfinished.</p>
     <p class="note">Next: V1’s chases and meetings on top of A. Those runs are under way, and there are no results yet.</p>
   </div>
 </section>

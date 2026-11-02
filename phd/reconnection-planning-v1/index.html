@@ -255,6 +255,27 @@ input[type=range]{accent-color:var(--href)}
 table.nums td.n{color:var(--ink)}
 td.arm .pick{background:var(--ink);color:#FFFFFF}
 
+/* results tables: one per comparison, paper-style rules, mission end first */
+.rt-list{display:flex;flex-direction:column;gap:44px}
+.rt-block{display:flex;flex-direction:column;gap:10px}
+.rt-block h3{font-size:clamp(19px,2.2vw,21px);font-weight:700;line-height:1.3}
+.rt-block>p,.rt-block>ul{max-width:760px}
+.rt-block ul{display:flex;flex-direction:column;gap:6px;padding-left:20px}
+.rt-block ul b{color:var(--ink)}
+.rtbox{overflow-x:auto}
+table.rt{border-collapse:collapse;width:100%;min-width:480px;font-size:15px;border-top:2px solid var(--ink);border-bottom:2px solid var(--ink)}
+table.rt th{font-family:var(--display);font-weight:500;color:var(--ink);text-align:right;padding:8px 10px;border-bottom:1px solid var(--ink);vertical-align:bottom}
+table.rt th:first-child{text-align:left}
+table.rt td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);vertical-align:top}
+table.rt td:first-child{text-align:left;color:var(--ink)}
+table.rt tbody tr:last-child td{border-bottom:0}
+table.rt tr.key td{background:var(--band)}
+table.rt tr.key td:first-child{font-weight:600}
+table.rt .v{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--ink)}
+table.rt .d{display:block;font-size:13px;line-height:1.35;color:var(--muted)}
+table.rt .d.c{font-weight:700;color:var(--ink)}
+table.rt.dec td:nth-child(2) .v{font-weight:700}
+
 /* footer band */
 .foot{background:var(--foot);box-shadow:0 0 0 100vmax var(--foot);clip-path:inset(0 -100vmax);padding-block:40px 56px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;font-size:14px;color:var(--muted)}
 .foot b{font-family:var(--display);font-weight:500;font-size:15px;color:var(--ink)}
@@ -592,23 +613,54 @@ td.arm .pick{background:var(--ink);color:#FFFFFF}
 <!-- ================= PART D ================= -->
 <section class="part" id="measured">
   <div class="part-head"><span class="letter">D</span><h2>What the runs showed</h2>
-    <p>Measured in the full simulator, not in the toys: 360 runs, 30 for each arm with 2, 3 and 4 robots. Each arm is compared with off.</p></div>
-  <div class="measured">
-    <div class="res-grid">
-      <div class="res"><h3>pursuit</h3>
-        <p>Each robot started less than one chase per run: the value check said no 25–34 times per robot. Chases were long, though: chasing and following took 7–12% of a robot's time before it finished.</p>
-        <p>Time in contact: no clear change (from 2% less to 14% more).</p>
-        <p class="fig">Finish: 2–4% slower than off, not a clear difference.</p></div>
-      <div class="res"><h3>rendezvous</h3>
-        <p>Robots stayed in contact about 1.6 times as long, and the time spent in long gaps (2 minutes or more) was cut in half.</p>
-        <p>The cost was the trips to meetings. They took 20% of a robot's time before it finished with 2 robots, 31% with 3 and 41% with 4.</p>
-        <p class="fig">Finish: 7% slower with 2 robots (not a clear difference), about 20% slower with 3 or 4.</p></div>
-      <div class="res"><h3>hybrid</h3>
-        <p>Robots almost never chased: at most 0.03 chases per robot, and the value check said no at most 3 times per robot (25–34 in pursuit). So hybrid behaved like rendezvous, and came out much the same on every measure, including contact. None of the differences between the two was clear.</p>
-        <p class="fig">Finish: 15% slower with 2 robots (not a clear difference), 18–24% slower with 3 or 4.</p>
-        <p class="note">One of the 30 two-robot runs never finished. It counts as 3000 s, and adds about 6 points to that 15%.</p></div>
-    </div>
-    <p class="note">A difference counts as clear when it holds up after correcting for the many comparisons made at once.</p>
+    <p>Measured in the full simulator, not in the toys: 360 runs, 30 for each arm with 2, 3 and 4 robots. Each table sets an arm against off, as means over the runs, and every table starts with the same measure: mission end, when the last robot is back home. Contact and gaps are counted from the start until the last robot finishes. A change in bold is clear: it holds up after correcting for the many comparisons made at once.</p></div>
+  <div class="measured rt-list">
+  <div class="rt-block"><h3>pursuit against off</h3>
+  <p>Each robot started less than one chase per run: the value check said no 25–34 times per robot. Chases were long, though: chasing and following took 7–12% of a robot’s time before it finished. Nothing changed clearly, mission end included.</p>
+  <div class="rtbox"><table class="rt" aria-label="pursuit against off">
+  <thead><tr><th>off → pursuit</th><th>2 robots</th><th>3 robots</th><th>4 robots</th></tr></thead>
+  <tbody>
+    <tr class="key"><td>Mission end: every robot home (s)</td><td><span class="v">996 → 1041</span><span class="d">+4%, not clear</span></td><td><span class="v">883 → 910</span><span class="d">+3%, not clear</span></td><td><span class="v">871 → 891</span><span class="d">+2%, not clear</span></td></tr>
+    <tr><td>Last robot finished (s)</td><td><span class="v">865 → 898</span><span class="d">+4%, not clear</span></td><td><span class="v">771 → 782</span><span class="d">+2%, not clear</span></td><td><span class="v">749 → 761</span><span class="d">+2%, not clear</span></td></tr>
+    <tr><td>Driving per robot, to finishing (m)</td><td><span class="v">316 → 335</span><span class="d">+6%, not clear</span></td><td><span class="v">257 → 264</span><span class="d">+2%, not clear</span></td><td><span class="v">242 → 245</span><span class="d">+1%, not clear</span></td></tr>
+    <tr><td>Pairs in contact (% of the time)</td><td><span class="v">29.2 → 33.4</span><span class="d">+4.2 points, not clear</span></td><td><span class="v">35.2 → 34.6</span><span class="d">−0.6 points, not clear</span></td><td><span class="v">36.9 → 38.2</span><span class="d">+1.3 points, not clear</span></td></tr>
+    <tr><td>Cut off in gaps of 2 min or more, per robot (s)</td><td><span class="v">551 → 513</span><span class="d">−7%, not clear</span></td><td><span class="v">239 → 248</span><span class="d">+4%, not clear</span></td><td><span class="v">142 → 128</span><span class="d">−10%, not clear</span></td></tr>
+    <tr><td>Longest gap between any two robots (s)</td><td><span class="v">485 → 377</span><span class="d">−22%, not clear</span></td><td><span class="v">474 → 473</span><span class="d">±0%, not clear</span></td><td><span class="v">537 → 505</span><span class="d">−6%, not clear</span></td></tr>
+  </tbody>
+</table></div>
+  </div>
+
+  <div class="rt-block"><h3>rendezvous against off</h3>
+  <p>Robots stayed in contact about 1.6 times as long, and the time cut off in long gaps fell by about half or more. The cost was the trips to meetings: 20% of a robot’s time before it finished with 2 robots, 31% with 3 and 41% with 4. Mission end came about a fifth later with 3 or 4 robots.</p>
+  <div class="rtbox"><table class="rt" aria-label="rendezvous against off">
+  <thead><tr><th>off → rendezvous</th><th>2 robots</th><th>3 robots</th><th>4 robots</th></tr></thead>
+  <tbody>
+    <tr class="key"><td>Mission end: every robot home (s)</td><td><span class="v">996 → 1069</span><span class="d">+7%, not clear</span></td><td><span class="v">883 → 1072</span><span class="d c">+21%</span></td><td><span class="v">871 → 1027</span><span class="d c">+18%</span></td></tr>
+    <tr><td>Last robot finished (s)</td><td><span class="v">865 → 919</span><span class="d">+6%, not clear</span></td><td><span class="v">771 → 929</span><span class="d c">+21%</span></td><td><span class="v">749 → 927</span><span class="d c">+24%</span></td></tr>
+    <tr><td>Driving per robot, to finishing (m)</td><td><span class="v">316 → 346</span><span class="d">+9%, not clear</span></td><td><span class="v">257 → 331</span><span class="d c">+29%</span></td><td><span class="v">242 → 304</span><span class="d c">+26%</span></td></tr>
+    <tr><td>Pairs in contact (% of the time)</td><td><span class="v">29.2 → 46.5</span><span class="d c">+17.3 points</span></td><td><span class="v">35.2 → 55.5</span><span class="d c">+20.3 points</span></td><td><span class="v">36.9 → 58.8</span><span class="d c">+21.9 points</span></td></tr>
+    <tr><td>Cut off in gaps of 2 min or more, per robot (s)</td><td><span class="v">551 → 292</span><span class="d c">−47%</span></td><td><span class="v">239 → 111</span><span class="d c">−53%</span></td><td><span class="v">142 → 43</span><span class="d c">−70%</span></td></tr>
+    <tr><td>Longest gap between any two robots (s)</td><td><span class="v">485 → 210</span><span class="d c">−57%</span></td><td><span class="v">474 → 226</span><span class="d c">−52%</span></td><td><span class="v">537 → 207</span><span class="d c">−61%</span></td></tr>
+  </tbody>
+</table></div>
+  </div>
+
+  <div class="rt-block"><h3>hybrid against off</h3>
+  <p>Robots almost never chased: at most 0.03 chases per robot, and the value check said no at most 3 times per robot (25–34 in pursuit). So hybrid behaved like rendezvous, and came out much the same on every measure. None of the differences between the two was clear.</p>
+  <div class="rtbox"><table class="rt" aria-label="hybrid against off">
+  <thead><tr><th>off → hybrid</th><th>2 robots</th><th>3 robots</th><th>4 robots</th></tr></thead>
+  <tbody>
+    <tr class="key"><td>Mission end: every robot home (s)</td><td><span class="v">996 → 1146</span><span class="d">+15%, not clear</span></td><td><span class="v">883 → 1096</span><span class="d c">+24%</span></td><td><span class="v">871 → 1027</span><span class="d c">+18%</span></td></tr>
+    <tr><td>Last robot finished (s)</td><td><span class="v">865 → 1003</span><span class="d">+16%, not clear</span></td><td><span class="v">771 → 947</span><span class="d c">+23%</span></td><td><span class="v">749 → 911</span><span class="d c">+22%</span></td></tr>
+    <tr><td>Driving per robot, to finishing (m)</td><td><span class="v">316 → 368</span><span class="d c">+16%</span></td><td><span class="v">257 → 342</span><span class="d c">+33%</span></td><td><span class="v">242 → 304</span><span class="d c">+26%</span></td></tr>
+    <tr><td>Pairs in contact (% of the time)</td><td><span class="v">29.2 → 48.3</span><span class="d c">+19.1 points</span></td><td><span class="v">35.2 → 55.9</span><span class="d c">+20.7 points</span></td><td><span class="v">36.9 → 59.3</span><span class="d c">+22.4 points</span></td></tr>
+    <tr><td>Cut off in gaps of 2 min or more, per robot (s)</td><td><span class="v">551 → 296</span><span class="d c">−46%</span></td><td><span class="v">239 → 103</span><span class="d c">−57%</span></td><td><span class="v">142 → 36</span><span class="d c">−75%</span></td></tr>
+    <tr><td>Longest gap between any two robots (s)</td><td><span class="v">485 → 206</span><span class="d c">−57%</span></td><td><span class="v">474 → 211</span><span class="d c">−55%</span></td><td><span class="v">537 → 197</span><span class="d c">−63%</span></td></tr>
+  </tbody>
+</table></div>
+  <p class="note">One of the 30 two-robot hybrid runs never finished. It counts as 3000 s, and adds about 6 points to the 15% at mission end.</p>
+  </div>
+
   </div>
 </section>
 
